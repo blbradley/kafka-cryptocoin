@@ -16,3 +16,7 @@ Usage
 -----
 
     sbt run
+
+###Running the tests
+
+    sbt test
