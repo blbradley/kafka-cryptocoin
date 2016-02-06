@@ -47,7 +47,6 @@ class BitstampStreamingProducer(producer: Producer[String, String])
   val streamConfig = new BitstampStreamingConfiguration
   val marketDataService = exchange.getStreamingExchangeService(streamConfig)
   marketDataService.connect
-  val mapper = new ObjectMapper
 
   def limitOrdersToLists(ob: List[LimitOrder]) = {
     ob.map { o => List(o.getLimitPrice, o.getTradableAmount)}
@@ -58,29 +57,33 @@ class BitstampStreamingProducer(producer: Producer[String, String])
   def run() {
     while (true) {
       val event = marketDataService.getNextEvent
+      val time_collected = System.currentTimeMillis
       val topic = event.getEventType match {
         case ExchangeEventType.SUBSCRIBE_ORDERS => "stream_orders"
         case ExchangeEventType.TRADE => "stream_trades"
         case ExchangeEventType.DEPTH => "stream_depth"
         case _ => null
       }
-      val msg = event.getPayload match {
+      val json = event.getPayload match {
         case ob: OrderBook =>
           val bids = limitOrdersToLists(ob.getBids.toList)
           val asks = limitOrdersToLists(ob.getAsks.toList)
-          val json = ("ask_prices" -> asks.map { o => o(0) }) ~
+          ("time_collected" -> time_collected) ~
+            ("ask_prices" -> asks.map { o => o(0) }) ~
             ("ask_volumes" -> asks.map { o => o(1) }) ~
             ("bid_prices" -> bids.map { o => o(0) }) ~
             ("bid_volumes" -> bids.map { o => o(1) })
-          compact(render(json))
         case trade: Trade =>
-          val price = trade.getPrice.setScale(2, RoundingMode.HALF_DOWN)
-            .bigDecimal.stripTrailingZeros
-          val volume = trade.getTradableAmount.setScale(8, RoundingMode.HALF_DOWN)
-            .bigDecimal.stripTrailingZeros
-          val fixed = Trade.Builder.from(trade).price(price).tradableAmount(volume).build
-          mapper.writeValueAsString(fixed)
+          val price = BigDecimal(trade.getPrice.setScale(2, RoundingMode.HALF_DOWN)
+            .bigDecimal.stripTrailingZeros)
+          val volume = BigDecimal(trade.getTradableAmount.setScale(8, RoundingMode.HALF_DOWN)
+            .bigDecimal.stripTrailingZeros)
+          ("time_collected" -> time_collected) ~
+            ("id" -> trade.getId) ~
+            ("currencyPair" -> trade.getCurrencyPair.toString) ~
+            ("price" -> price) ~ ("volume" -> volume)
       }
+      val msg = compact(render(json))
       send(topic, msg)
     }
   }
