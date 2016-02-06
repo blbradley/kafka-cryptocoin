@@ -14,4 +14,8 @@ object ExchangeService {
   def getExchanges() = {
     exchanges
   }
+
+  def getExchange(name: String) = {
+    exchanges.filter(_.getExchangeSpecification.getExchangeName.toLowerCase == name).head
+  }
 }
