@@ -22,6 +22,10 @@ object KafkaCryptocoin {
   def main(args: Array[String]) {
     val producer = new Producer[String, String](producerConfig)
 
+    val exchangeProducer = new BitstampStreamingProducer(producer)
+    val streamExecutor = Executors.newSingleThreadExecutor
+    streamExecutor.submit(exchangeProducer)
+
     ExchangeService.getExchanges foreach { exchange =>
       try {
         scheduler.scheduleAtFixedRate(new TickProducer(exchange, producer), 0, 30, SECONDS)
