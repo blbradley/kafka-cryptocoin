@@ -41,12 +41,20 @@ class ExchangePollingActor(exchange: Exchange) extends Actor {
 
   import context.dispatcher
   val tick = context.system.scheduler.schedule(0 seconds, 30 seconds, self, "tick")
+  val orderbook = context.system.scheduler.schedule(0 seconds, 30 seconds, self, "orderbook")
 
   def receive = {
     case "tick" =>
       val ticker = marketDataService.getTicker(CurrencyPair.BTC_USD)
       val msg = mapper.writeValueAsString(ticker)
       context.actorOf(Props[KafkaProducerActor]) ! ("ticks", key, msg)
+
+    case "orderbook" =>
+      val ob = marketDataService.getOrderBook(CurrencyPair.BTC_USD)
+      val timeCollected = System.currentTimeMillis
+      val json = Utils.orderBookToJson(ob, timeCollected)
+      val msg = compact(render(json))
+      context.actorOf(Props[KafkaProducerActor]) ! ("orderbooks", key, msg)
   }
 }
 
@@ -56,22 +64,6 @@ class BitstampStreamingActor extends Actor {
   val streamConfig = new BitstampStreamingConfiguration
   val marketDataService = exchange.getStreamingExchangeService(streamConfig)
   marketDataService.connect
-
-  def limitOrdersToLists(ob: List[LimitOrder]) = {
-    ob.map { o => List(o.getLimitPrice, o.getTradableAmount)}
-      .map { _ map { _.stripTrailingZeros } }
-      .map { _ map { BigDecimal(_) } }
-  }
-
-  def orderBookToJson(ob: OrderBook, timeCollected: Long) = {
-    val bids = limitOrdersToLists(ob.getBids.toList)
-    val asks = limitOrdersToLists(ob.getAsks.toList)
-    ("time_collected" -> timeCollected) ~
-      ("ask_prices" -> asks.map { o => o(0) }) ~
-      ("ask_volumes" -> asks.map { o => o(1) }) ~
-      ("bid_prices" -> bids.map { o => o(0) }) ~
-      ("bid_volumes" -> bids.map { o => o(1) })
-  }
 
   override def preStart = getNextEvent
 
@@ -88,11 +80,11 @@ class BitstampStreamingActor extends Actor {
       getNextEvent
 
     case (t: Long, ExchangeEventType.SUBSCRIBE_ORDERS, ob: OrderBook) =>
-      val json = orderBookToJson(ob, t)
+      val json = Utils.orderBookToJson(ob, t)
       self ! ("stream_orders", key, json)
 
     case (t: Long, ExchangeEventType.DEPTH, ob: OrderBook) =>
-      val json = orderBookToJson(ob, t)
+      val json = Utils.orderBookToJson(ob, t)
       self ! ("stream_depth", key, json)
 
     case (t: Long, ExchangeEventType.TRADE, trade: Trade) =>
