@@ -36,6 +36,10 @@ class KafkaProducerActor extends KafkaProducerMixin with Actor {
 
 class ExchangePollingActor(exchange: Exchange) extends Actor {
   val key = exchange.getExchangeSpecification.getExchangeName
+  val currencyPair = exchange.getMetaData.getMarketMetaDataMap
+    .map { case (pair, _) => pair }
+    .filter { p => p.baseSymbol == "BTC"}
+    .head
   val marketDataService = exchange.getPollingMarketDataService
   val mapper = new ObjectMapper
 
@@ -45,12 +49,12 @@ class ExchangePollingActor(exchange: Exchange) extends Actor {
 
   def receive = {
     case "tick" =>
-      val ticker = marketDataService.getTicker(CurrencyPair.BTC_USD)
+      val ticker = marketDataService.getTicker(currencyPair)
       val msg = mapper.writeValueAsString(ticker)
       context.actorOf(Props[KafkaProducerActor]) ! ("ticks", key, msg)
 
     case "orderbook" =>
-      val ob = marketDataService.getOrderBook(CurrencyPair.BTC_USD)
+      val ob = marketDataService.getOrderBook(currencyPair)
       val timeCollected = System.currentTimeMillis
       val json = Utils.orderBookToJson(ob, timeCollected)
       val msg = compact(render(json))
