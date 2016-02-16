@@ -12,7 +12,7 @@ object ExchangeService {
   private val names = exchangeLoader.iterator.toSeq.map(_.getClass.getName)
   private val exchanges = names.map(ExchangeFactory.INSTANCE.createExchange)
 
-  private def getNameFromExchange(exchange: Exchange) = {
+  def getNameFromExchange(exchange: Exchange) = {
     exchange.getClass.getSimpleName.dropRight(8)
   }
 

@@ -8,6 +8,15 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.xeiam.xchange.Exchange
 import org.json4s.jackson.JsonMethods._
 
+
+class PollingActor extends Actor {
+  def receive = {
+    case e: Exchange =>
+      val name = ExchangeService.getNameFromExchange(e).toLowerCase
+      context.actorOf(Props(classOf[ExchangePollingActor], e), name)
+  }
+}
+
 class ExchangePollingActor(exchange: Exchange) extends Actor {
   val key = exchange.getExchangeSpecification.getExchangeName
   val currencyPair = exchange.getMetaData.getMarketMetaDataMap
