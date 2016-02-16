@@ -7,13 +7,10 @@ import scala.math.BigDecimal.RoundingMode
 import akka.actor.{Actor, Props}
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.xeiam.xchange.Exchange
-import com.xeiam.xchange.bitstamp.service.streaming.BitstampStreamingConfiguration
-import com.xeiam.xchange.currency.CurrencyPair
-import com.xeiam.xchange.dto.marketdata.{OrderBook, Trade}
-import com.xeiam.xchange.dto.trade.LimitOrder
+import com.xeiam.xchange.dto.marketdata.{OrderBook, Ticker, Trade}
 import com.xeiam.xchange.service.streaming.ExchangeEventType
 import kafka.producer.KeyedMessage
-import org.json4s.JsonAST.JObject
+import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
@@ -50,7 +47,9 @@ class ExchangePollingActor(exchange: Exchange) extends Actor {
   def receive = {
     case "tick" =>
       val ticker = marketDataService.getTicker(currencyPair)
-      val msg = mapper.writeValueAsString(ticker)
+      val timeCollected = System.currentTimeMillis
+      val json = Utils.tickerToJson(ticker, timeCollected)
+      val msg = compact(render(json))
       context.actorOf(Props[KafkaProducerActor]) ! ("ticks", key, msg)
 
     case "orderbook" =>
@@ -62,17 +61,25 @@ class ExchangePollingActor(exchange: Exchange) extends Actor {
   }
 }
 
-class BitstampStreamingActor extends Actor {
-  val exchange = ExchangeService.getExchange("bitstamp")
+class ExchangeStreamingActor(exchange: Exchange) extends Actor {
   val key = exchange.getExchangeSpecification.getExchangeName
-  val streamConfig = new BitstampStreamingConfiguration
-  val marketDataService = exchange.getStreamingExchangeService(streamConfig)
-  marketDataService.connect
+  val streamConfig = ExchangeService.getStreamingConfig(exchange)
+  val marketDataService = streamConfig match {
+    case Some(c) => Some(exchange.getStreamingExchangeService(c))
+    case None => None
+  }
 
-  override def preStart = getNextEvent
+  override def preStart = {
+    marketDataService match {
+      case Some(s) =>
+        s.connect
+        getNextEvent
+      case None =>
+    }
+  }
 
   def getNextEvent = {
-    val event = marketDataService.getNextEvent
+    val event = marketDataService.get.getNextEvent
     val timeCollected = System.currentTimeMillis
     self ! (timeCollected, event.getEventType, event.getPayload)
   }
@@ -83,6 +90,10 @@ class BitstampStreamingActor extends Actor {
       context.actorOf(Props[KafkaProducerActor]) ! (topic, key, msg)
       getNextEvent
 
+    case (t: Long, ExchangeEventType.TICKER, tick: Ticker) =>
+      val json = Utils.tickerToJson(tick, t)
+      self ! ("stream_ticks", key, json)
+
     case (t: Long, ExchangeEventType.SUBSCRIBE_ORDERS, ob: OrderBook) =>
       val json = Utils.orderBookToJson(ob, t)
       self ! ("stream_orders", key, json)
@@ -92,12 +103,16 @@ class BitstampStreamingActor extends Actor {
       self ! ("stream_depth", key, json)
 
     case (t: Long, ExchangeEventType.TRADE, trade: Trade) =>
+      val timestamp = Option(trade.getTimestamp).map { _.getTime }
+      val orderType = Option(trade.getType).map { _.toString.toLowerCase }
       val price = BigDecimal(trade.getPrice.setScale(2, RoundingMode.HALF_DOWN)
         .bigDecimal.stripTrailingZeros)
       val volume = BigDecimal(trade.getTradableAmount.setScale(8, RoundingMode.HALF_DOWN)
         .bigDecimal.stripTrailingZeros)
-      val json = ("time_collected" -> t) ~
+      val json = ("timestamp" -> timestamp) ~
+        ("time_collected" -> t) ~
         ("id" -> trade.getId) ~
+        ("type" -> orderType) ~
         ("currencyPair" -> trade.getCurrencyPair.toString) ~
         ("price" -> price) ~ ("volume" -> volume)
       self ! ("stream_trades", key, json)

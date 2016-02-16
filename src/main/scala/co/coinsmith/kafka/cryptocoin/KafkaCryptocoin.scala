@@ -19,11 +19,9 @@ object KafkaCryptocoin {
 
   val system = ActorSystem("PollingSystem")
   def main(args: Array[String]) {
-    system.actorOf(Props(classOf[BitstampStreamingActor]))
-
     ExchangeService.getExchanges foreach { exchange =>
+      system.actorOf(Props(classOf[ExchangeStreamingActor], exchange))
       system.actorOf(Props(classOf[ExchangePollingActor], exchange))
     }
-
   }
 }
