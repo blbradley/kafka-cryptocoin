@@ -1,65 +1,14 @@
 package co.coinsmith.kafka.cryptocoin
 
-import scala.collection.JavaConversions._
-import scala.concurrent.duration._
 import scala.math.BigDecimal.RoundingMode
 
-import akka.actor.{Actor, Props}
-import com.fasterxml.jackson.databind.ObjectMapper
+import akka.actor.{Props, Actor}
 import com.xeiam.xchange.Exchange
-import com.xeiam.xchange.dto.marketdata.{OrderBook, Ticker, Trade}
+import com.xeiam.xchange.dto.marketdata.{Trade, OrderBook, Ticker}
 import com.xeiam.xchange.service.streaming.ExchangeEventType
-import kafka.producer.KeyedMessage
-import org.json4s.JsonAST._
-import org.json4s.JsonDSL.WithBigDecimal._
+import org.json4s.JsonAST.JObject
 import org.json4s.jackson.JsonMethods._
-
-
-trait KafkaProducerMixin {
-  val producer = KafkaCryptocoin.producer
-
-  def send(topic: String, key: String, msg: String) {
-    val data = new KeyedMessage[String, String](topic, key, msg)
-    producer.send(data)
-  }
-}
-
-class KafkaProducerActor extends KafkaProducerMixin with Actor {
-  def receive = {
-    case (topic: String, key: String, msg: String) =>
-      send(topic, key, msg)
-  }
-}
-
-class ExchangePollingActor(exchange: Exchange) extends Actor {
-  val key = exchange.getExchangeSpecification.getExchangeName
-  val currencyPair = exchange.getMetaData.getMarketMetaDataMap
-    .map { case (pair, _) => pair }
-    .filter { p => p.baseSymbol == "BTC"}
-    .head
-  val marketDataService = exchange.getPollingMarketDataService
-  val mapper = new ObjectMapper
-
-  import context.dispatcher
-  val tick = context.system.scheduler.schedule(0 seconds, 30 seconds, self, "tick")
-  val orderbook = context.system.scheduler.schedule(0 seconds, 30 seconds, self, "orderbook")
-
-  def receive = {
-    case "tick" =>
-      val ticker = marketDataService.getTicker(currencyPair)
-      val timeCollected = System.currentTimeMillis
-      val json = Utils.tickerToJson(ticker, timeCollected)
-      val msg = compact(render(json))
-      context.actorOf(Props[KafkaProducerActor]) ! ("ticks", key, msg)
-
-    case "orderbook" =>
-      val ob = marketDataService.getOrderBook(currencyPair)
-      val timeCollected = System.currentTimeMillis
-      val json = Utils.orderBookToJson(ob, timeCollected)
-      val msg = compact(render(json))
-      context.actorOf(Props[KafkaProducerActor]) ! ("orderbooks", key, msg)
-  }
-}
+import org.json4s.JsonDSL.WithBigDecimal._
 
 class ExchangeStreamingActor(exchange: Exchange) extends Actor {
   val key = exchange.getExchangeSpecification.getExchangeName
