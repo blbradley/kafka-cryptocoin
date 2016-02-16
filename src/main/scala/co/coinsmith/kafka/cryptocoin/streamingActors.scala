@@ -10,6 +10,15 @@ import org.json4s.JsonAST.JObject
 import org.json4s.jackson.JsonMethods._
 import org.json4s.JsonDSL.WithBigDecimal._
 
+
+class StreamingActor extends Actor {
+  def receive = {
+    case e: Exchange =>
+      val name = ExchangeService.getNameFromExchange(e).toLowerCase
+      context.actorOf(Props(classOf[ExchangeStreamingActor], e), name)
+  }
+}
+
 class ExchangeStreamingActor(exchange: Exchange) extends Actor {
   val key = exchange.getExchangeSpecification.getExchangeName
   val streamConfig = ExchangeService.getStreamingConfig(exchange)
