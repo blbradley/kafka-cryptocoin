@@ -10,6 +10,8 @@ libraryDependencies += "com.xeiam.xchange" % "xchange-bitfinex" % "3.1.0"
 libraryDependencies += "com.xeiam.xchange" % "xchange-okcoin" % "3.1.0"
 libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.3.0"
 
+dependencyOverrides += "io.netty" % "netty-all" % "4.1.0.Beta8"
+
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
 
 enablePlugins(GitVersioning)
