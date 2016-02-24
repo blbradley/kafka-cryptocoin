@@ -43,6 +43,9 @@ class ExchangeStreamingActor(exchange: Exchange) extends Actor {
   }
 
   def receive = {
+    case (_, ExchangeEventType.DISCONNECT, _) =>
+      throw new Exception("Received WebSocket disconnect event")
+
     case (topic: String, key: String, json: JObject) =>
       val msg = compact(render(json))
       context.actorOf(Props[KafkaProducerActor]) ! (topic, key, msg)
