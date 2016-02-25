@@ -1,7 +1,9 @@
 package co.coinsmith.kafka.cryptocoin
 
 import scala.collection.JavaConversions._
+import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 import akka.actor.{Actor, Props}
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -32,17 +34,26 @@ class ExchangePollingActor(exchange: Exchange) extends Actor {
 
   def receive = {
     case "tick" =>
-      val ticker = marketDataService.getTicker(currencyPair)
-      val timeCollected = System.currentTimeMillis
-      val json = Utils.tickerToJson(ticker, timeCollected)
-      val msg = compact(render(json))
-      context.actorOf(Props[KafkaProducerActor]) ! ("ticks", key, msg)
+      import context.dispatcher
+      Future { marketDataService.getTicker(currencyPair) }
+        .onComplete {
+          case Success(ticker) =>
+            val timeCollected = System.currentTimeMillis
+            val json = Utils.tickerToJson(ticker, timeCollected)
+            val msg = compact(render(json))
+            context.actorOf(Props[KafkaProducerActor]) ! ("ticks", key, msg)
+          case Failure(ex) => throw ex
+        }
 
     case "orderbook" =>
-      val ob = marketDataService.getOrderBook(currencyPair)
-      val timeCollected = System.currentTimeMillis
-      val json = Utils.orderBookToJson(ob, timeCollected)
-      val msg = compact(render(json))
-      context.actorOf(Props[KafkaProducerActor]) ! ("orderbooks", key, msg)
+      Future { marketDataService.getOrderBook(currencyPair) }
+        .onComplete {
+          case Success(ob) =>
+            val timeCollected = System.currentTimeMillis
+            val json = Utils.orderBookToJson(ob, timeCollected)
+            val msg = compact(render(json))
+            context.actorOf(Props[KafkaProducerActor]) ! ("orderbooks", key, msg)
+          case Failure(ex) => throw ex
+        }
   }
 }
