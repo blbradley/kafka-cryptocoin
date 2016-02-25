@@ -5,7 +5,7 @@ import scala.math.BigDecimal.RoundingMode
 import akka.actor.{Props, Actor}
 import com.xeiam.xchange.Exchange
 import com.xeiam.xchange.dto.marketdata.{Trade, OrderBook, Ticker}
-import com.xeiam.xchange.service.streaming.ExchangeEventType
+import com.xeiam.xchange.service.streaming.{ExchangeStreamingConfiguration, ExchangeEventType}
 import org.json4s.JsonAST.JObject
 import org.json4s.jackson.JsonMethods._
 import org.json4s.JsonDSL.WithBigDecimal._
@@ -14,30 +14,27 @@ import org.json4s.JsonDSL.WithBigDecimal._
 class StreamingActor extends Actor {
   def receive = {
     case e: Exchange =>
-      val name = ExchangeService.getNameFromExchange(e).toLowerCase
-      context.actorOf(Props(classOf[ExchangeStreamingActor], e), name)
+      ExchangeService.getStreamingConfig(e) match {
+        case Some(sc) =>
+          val name = ExchangeService.getNameFromExchange(e).toLowerCase
+          context.actorOf(Props(classOf[ExchangeStreamingActor], e, sc), name)
+        case None =>
+      }
   }
 }
 
-class ExchangeStreamingActor(exchange: Exchange) extends Actor {
+class ExchangeStreamingActor(exchange: Exchange, streamConfig: ExchangeStreamingConfiguration)
+  extends Actor {
   val key = exchange.getExchangeSpecification.getExchangeName
-  val streamConfig = ExchangeService.getStreamingConfig(exchange)
-  val marketDataService = streamConfig match {
-    case Some(c) => Some(exchange.getStreamingExchangeService(c))
-    case None => None
-  }
+  val marketDataService = exchange.getStreamingExchangeService(streamConfig)
 
   override def preStart = {
-    marketDataService match {
-      case Some(s) =>
-        s.connect
-        getNextEvent
-      case None =>
-    }
+    marketDataService.connect
+    getNextEvent
   }
 
   def getNextEvent = {
-    val event = marketDataService.get.getNextEvent
+    val event = marketDataService.getNextEvent
     val timeCollected = System.currentTimeMillis
     self ! (timeCollected, event.getEventType, event.getPayload)
   }
