@@ -1,6 +1,8 @@
 package co.coinsmith.kafka.cryptocoin
 
+import scala.concurrent.Future
 import scala.math.BigDecimal.RoundingMode
+import scala.util.{Failure, Success}
 
 import akka.actor.{Props, Actor}
 import com.xeiam.xchange.Exchange
@@ -28,15 +30,22 @@ class ExchangeStreamingActor(exchange: Exchange, streamConfig: ExchangeStreaming
   val key = exchange.getExchangeSpecification.getExchangeName
   val marketDataService = exchange.getStreamingExchangeService(streamConfig)
 
+  import context.dispatcher
   override def preStart = {
-    marketDataService.connect
-    getNextEvent
+    Future {
+      marketDataService.connect
+    }.onComplete {
+      case _ => getNextEvent
+    }
   }
 
-  def getNextEvent = {
-    val event = marketDataService.getNextEvent
-    val timeCollected = System.currentTimeMillis
-    self ! (timeCollected, event.getEventType, event.getPayload)
+  def getNextEvent = Future {
+    marketDataService.getNextEvent
+  }.onComplete {
+    case Success(e) =>
+      val timeCollected = System.currentTimeMillis
+      self ! (timeCollected, e.getEventType, e.getPayload)
+    case Failure(ex) => throw ex
   }
 
   def receive = {
