@@ -23,7 +23,7 @@ dockerfile in docker := {
     from("java")
     add(classpath.files, "/app/")
     add(jarFile, jarTarget)
-    entryPoint("java", "-cp", classpathString, mainclass)
+    entryPointShell("exec", "java", "$JAVA_OPTS", "-cp", classpathString, mainclass)
   }
 }
 
