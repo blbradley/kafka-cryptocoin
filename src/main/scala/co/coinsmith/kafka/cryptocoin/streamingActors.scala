@@ -39,13 +39,10 @@ class ExchangeStreamingActor(exchange: Exchange, streamConfig: ExchangeStreaming
     }
   }
 
-  def getNextEvent = Future {
-    marketDataService.getNextEvent
-  }.onComplete {
-    case Success(e) =>
-      val timeCollected = System.currentTimeMillis
-      self ! (timeCollected, e.getEventType, e.getPayload)
-    case Failure(ex) => throw ex
+  def getNextEvent = {
+    val event = marketDataService.getNextEvent
+    val timeCollected = System.currentTimeMillis
+    self ! (timeCollected, event.getEventType, event.getPayload)
   }
 
   def receive = {
