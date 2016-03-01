@@ -1,16 +1,13 @@
 package co.coinsmith.kafka.cryptocoin
 
 import java.util.Properties
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit.SECONDS
 
+import akka.actor.{ActorSystem, Props}
 import kafka.javaapi.producer.Producer
-import kafka.producer.{KeyedMessage, ProducerConfig}
+import kafka.producer.ProducerConfig
 
 
 object KafkaCryptocoin {
-  val corePoolSize = ExchangeService.getExchanges.size
-  val scheduler = Executors.newScheduledThreadPool(corePoolSize)
   val brokers = sys.env("KAFKA_CRYPTOCOIN_BROKER_LIST")
 
   val props = new Properties
@@ -18,20 +15,15 @@ object KafkaCryptocoin {
   props.put("serializer.class", "kafka.serializer.StringEncoder")
   props.put("request.required.acks", "1")
   val producerConfig = new ProducerConfig(props)
+  val producer = new Producer[String, String](producerConfig)
 
+  val system = ActorSystem("PollingSystem")
   def main(args: Array[String]) {
-    val producer = new Producer[String, String](producerConfig)
-
+    val streamingActor = system.actorOf(Props[StreamingActor], "streaming")
+    val pollingActor = system.actorOf(Props[PollingActor], "polling")
     ExchangeService.getExchanges foreach { exchange =>
-      try {
-        scheduler.scheduleAtFixedRate(new TickProducer(exchange, producer), 0, 30, SECONDS)
-      } catch {
-        case e: Exception => {
-          producer.close
-          throw new RuntimeException
-        }
-      }
+      streamingActor ! exchange
+      pollingActor ! exchange
     }
-
   }
 }
