@@ -18,15 +18,13 @@ enablePlugins(GitVersioning)
 enablePlugins(DockerPlugin)
 
 import ReleaseTransformations._
-// default release process with publishing removed
+// default release process with publishing, tagging, and pushing removed
 releaseProcess := Seq[ReleaseStep](
   checkSnapshotDependencies,
   inquireVersions,
   runTest,
   setReleaseVersion,
   commitReleaseVersion,
-  tagRelease,
   setNextVersion,
-  commitNextVersion,
-  pushChanges
+  commitNextVersion
 )
