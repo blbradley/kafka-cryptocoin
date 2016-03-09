@@ -50,7 +50,7 @@ class ExchangePollingActor(exchange: Exchange) extends Actor {
         .onComplete {
           case Success(ob) =>
             val timeCollected = System.currentTimeMillis
-            val json = Utils.orderBookToJson(ob, timeCollected)
+            val json = Utils.orderBookXChangeToJson(ob, timeCollected)
             val msg = compact(render(json))
             context.actorOf(Props[KafkaProducerActor]) ! ("orderbooks", key, msg)
           case Failure(ex) => throw ex
