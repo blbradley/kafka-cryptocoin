@@ -63,7 +63,7 @@ object Utils {
       .map { _ map { BigDecimal(_) } }
   }
 
-  def orderBookToJson(ob: OrderBook, timeCollected: Long) = {
+  def orderBookXChangeToJson(ob: OrderBook, timeCollected: Long) = {
     val bids = limitOrdersToLists(ob.getBids.toList)
     val asks = limitOrdersToLists(ob.getAsks.toList)
     val timestamp = Option(ob.getTimeStamp) match {
@@ -71,6 +71,14 @@ object Utils {
       case _ => None
     }
 
+    orderBookToJson(timestamp, timeCollected, bids, asks)
+  }
+
+  def orderBookToJson(
+    timestamp: Option[Long],
+    timeCollected: Long,
+    asks: List[List[BigDecimal]],
+    bids: List[List[BigDecimal]]) = {
     ("timestamp" -> timestamp) ~
       ("time_collected" -> timeCollected) ~
       ("ask_prices" -> asks.map { o => o(0) }) ~
