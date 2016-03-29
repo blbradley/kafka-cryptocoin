@@ -1,19 +1,21 @@
 package co.coinsmith.kafka.cryptocoin
 
+import java.time.Instant
+
 import org.json4s.JsonDSL.WithBigDecimal._
 
 
 object Utils {
   def orderBookToJson(
-    timestamp: Option[Long],
-    timeCollected: Long,
-    asks: List[List[BigDecimal]],
-    bids: List[List[BigDecimal]]) = {
+    timestamp: Option[String],
+    timeCollected: Instant,
+    asks: List[Order],
+    bids: List[Order]) = {
     ("timestamp" -> timestamp) ~
-      ("time_collected" -> timeCollected) ~
-      ("ask_prices" -> asks.map { o => o(0) }) ~
-      ("ask_volumes" -> asks.map { o => o(1) }) ~
-      ("bid_prices" -> bids.map { o => o(0) }) ~
-      ("bid_volumes" -> bids.map { o => o(1) })
+      ("time_collected" -> timeCollected.toString) ~
+      ("ask_prices" -> asks.map { o => o.price }) ~
+      ("ask_volumes" -> asks.map { o => o.volume }) ~
+      ("bid_prices" -> bids.map { o => o.price }) ~
+      ("bid_volumes" -> bids.map { o => o.volume })
   }
 }

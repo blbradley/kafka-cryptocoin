@@ -34,7 +34,7 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
             val timeCollected = Instant.now
             // OKCoin websocket responses are always wrapped in an array
             val json = parse(message)(0) transformField {
-              case JField("timestamp", JString(t)) => ("timestamp" -> t.toLong)
+              case JField("timestamp", JString(t)) => ("timestamp" -> Instant.ofEpochMilli(t.toLong).toString)
             }
             self ! (timeCollected, json)
           }
@@ -76,15 +76,17 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
     case Data(t, "ok_sub_spotcny_btc_ticker", data) =>
       val json = data.transformField {
         case JField("vol", JString(v)) => JField("volume", JDecimal(BigDecimal(v.replace(",", ""))))
-        case JField(key, JString(value)) => JField(key, JDecimal(BigDecimal(value)))
-      } merge render("time_collected" -> t.toEpochMilli)
+        case JField(key, JString(value)) if key != "timestamp" => JField(key, JDecimal(BigDecimal(value)))
+      } merge render("time_collected" -> t.toString)
       self ! ("stream_ticks", key, json)
 
     case Data(t, "ok_sub_spotcny_btc_depth_60", data) =>
-      val timestamp = Some((data \ "timestamp").extract[Long])
+      val timestamp = (data \ "timestamp").extract[String]
       val asks = (data \ "asks").extract[List[List[BigDecimal]]]
+        .map { o => new Order(o(0), o(1)) }
       val bids = (data \ "bids").extract[List[List[BigDecimal]]]
-      val json = Utils.orderBookToJson(timestamp, t.toEpochMilli, asks, bids)
+        .map { o => new Order(o(0), o(1)) }
+      val json = Utils.orderBookToJson(Some(timestamp), t, asks, bids)
       self ! ("stream_depth", key, json)
 
     case Data(t, "ok_sub_spotcny_btc_trades", data: JArray) =>
@@ -96,9 +98,9 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
             // correct date if time collected happens right after midnight
             tradeDateTime = tradeDateTime minusDays 1
           }
-          val timestamp = tradeDateTime.toInstant(ZoneOffset.UTC).toEpochMilli
-          ("timestamp" -> timestamp) ~
-            ("time_collected" -> t.toEpochMilli) ~
+          val timestamp = tradeDateTime.toInstant(ZoneOffset.UTC)
+          ("timestamp" -> timestamp.toString) ~
+            ("time_collected" -> t.toString) ~
             ("id" -> id.toLong) ~
             ("price" -> BigDecimal(p)) ~
             ("volume" -> BigDecimal(v)) ~
