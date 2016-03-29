@@ -15,7 +15,9 @@ object Utils {
       ("time_collected" -> timeCollected.toString) ~
       ("ask_prices" -> asks.map { o => o.price }) ~
       ("ask_volumes" -> asks.map { o => o.volume }) ~
+      ("ask_timestamps" -> asks.map { o => o.timestamp }) ~
       ("bid_prices" -> bids.map { o => o.price }) ~
-      ("bid_volumes" -> bids.map { o => o.volume })
+      ("bid_volumes" -> bids.map { o => o.volume }) ~
+      ("bid_timestamps" -> bids.map { o => o.timestamp })
   }
 }
