@@ -57,9 +57,9 @@ class BitstampPollingActor extends Actor with ActorLogging {
         .runWith(sink)
     case (t: Instant, HttpEntity.Strict(_, data)) =>
       val json = parse(data.utf8String).transformField {
-        case JField("timestamp", JString(t)) => JField("timestamp", JLong(t.toLong * 1000))
+        case JField("timestamp", JString(t)) => JField("timestamp", Instant.ofEpochSecond(t.toLong).toString)
         case JField(key, JString(value)) => JField(key, JDecimal(BigDecimal(value)))
-      } merge render("time_collected" -> t.toEpochMilli)
+      } merge render("time_collected" -> t.toString)
       self ! ("ticks", json)
 
     case (t: Instant, HttpEntity.Default(_, _, data)) =>
@@ -67,14 +67,14 @@ class BitstampPollingActor extends Actor with ActorLogging {
         .onSuccess {
           case s =>
             val json = parse(s.utf8String).transformField {
-              case JField("timestamp", JString(t)) => JField("timestamp", JLong(t.toLong * 1000))
-            } transform {
-              case JString(v) => JDecimal(BigDecimal(v))
+              case JField("timestamp", JString(t)) => JField("timestamp", Instant.ofEpochSecond(t.toLong).toString)
             }
-            val timestamp = Some((json \ "timestamp").extract[Long])
-            val asks = (json \ "asks").extract[List[List[BigDecimal]]]
-            val bids = (json \ "bids").extract[List[List[BigDecimal]]]
-            val orderbook = Utils.orderBookToJson(timestamp, t.toEpochMilli, asks, bids)
+            val timestamp = (json \ "timestamp").extract[String]
+            val asks = (json \ "asks").extract[List[List[String]]]
+              .map { o => new Order(BigDecimal(o(0)), BigDecimal(o(1))) }
+            val bids = (json \ "bids").extract[List[List[String]]]
+              .map { o => new Order(BigDecimal(o(0)), BigDecimal(o(1))) }
+            val orderbook = Utils.orderBookToJson(Some(timestamp), t, asks, bids)
             self ! ("orderbooks", orderbook)
         }
     case (topic: String, json: JValue) =>
