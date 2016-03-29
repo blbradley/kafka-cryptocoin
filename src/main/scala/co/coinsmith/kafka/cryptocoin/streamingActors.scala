@@ -75,6 +75,8 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
 
     case Data(t, "ok_sub_spotcny_btc_ticker", data) =>
       val json = data.transformField {
+        case JField("sell", v) => JField("ask", v)
+        case JField("buy", v) => JField("bid", v)
         case JField("vol", JString(v)) => JField("volume", JDecimal(BigDecimal(v.replace(",", ""))))
         case JField(key, JString(value)) if key != "timestamp" => JField(key, JDecimal(BigDecimal(value)))
       } merge render("time_collected" -> t.toString)
