@@ -112,6 +112,6 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
 
     case (topic: String, key: String, json: JValue) =>
       val msg = compact(render(json))
-      context.actorOf(Props[KafkaProducerActor]) ! (topic, key, msg)
+      KafkaProducer.send(topic, key, msg)
   }
 }
