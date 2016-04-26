@@ -28,8 +28,8 @@ class PollingActor extends Actor {
 
 abstract class HTTPPollingActor extends Actor with ActorLogging {
   import context.dispatcher
-  val tick = context.system.scheduler.schedule(0 seconds, 30 seconds, self, "tick")
-  val orderbook = context.system.scheduler.schedule(0 seconds, 30 seconds, self, "orderbook")
+  val tick = context.system.scheduler.schedule(2 seconds, 30 seconds, self, "tick")
+  val orderbook = context.system.scheduler.schedule(2 seconds, 30 seconds, self, "orderbook")
 
   val responseFlow = Flow[(Try[HttpResponse], String)].map {
     case (Success(HttpResponse(statusCode, _, entity, _)), _) =>
@@ -92,7 +92,7 @@ class BitfinexPollingActor extends HTTPPollingActor{
       self ! ("orderbooks", orderbook)
     case (topic: String, json: JValue) =>
       val msg = compact(render(json))
-      context.actorOf(Props[KafkaProducerActor]) ! (topic, key, msg)
+      KafkaProducer.send(topic, key, msg)
   }
 }
 
@@ -147,6 +147,6 @@ class BitstampPollingActor extends HTTPPollingActor {
         }
     case (topic: String, json: JValue) =>
       val msg = compact(render(json))
-      context.actorOf(Props[KafkaProducerActor]) ! (topic, key, msg)
+      KafkaProducer.send(topic, key, msg)
   }
 }
