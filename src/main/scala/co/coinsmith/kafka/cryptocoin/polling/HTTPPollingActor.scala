@@ -6,12 +6,14 @@ import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging}
 import akka.http.scaladsl.model.HttpResponse
+import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Flow
 import org.json4s.DefaultFormats
 
 
 abstract class HTTPPollingActor extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
+  implicit val materializer = ActorMaterializer()
   import context.dispatcher
   val tick = context.system.scheduler.schedule(2 seconds, 30 seconds, self, "tick")
   val orderbook = context.system.scheduler.schedule(2 seconds, 30 seconds, self, "orderbook")
