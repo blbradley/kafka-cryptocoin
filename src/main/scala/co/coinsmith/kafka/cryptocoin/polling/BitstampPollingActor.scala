@@ -7,7 +7,6 @@ import java.time.Instant
 import akka.Done
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse}
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import co.coinsmith.kafka.cryptocoin.{KafkaProducer, Order, Utils}
@@ -18,7 +17,6 @@ import org.json4s.jackson.JsonMethods._
 
 class BitstampPollingActor extends HTTPPollingActor {
   val key = "bitstamp"
-  implicit val materializer = ActorMaterializer()
   import context.dispatcher
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("www.bitstamp.net")
 

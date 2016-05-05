@@ -4,10 +4,11 @@ import java.time.Instant
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
+import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.ByteString
-import co.coinsmith.kafka.cryptocoin.polling.{BitfinexPollingActor, BitstampPollingActor}
+import co.coinsmith.kafka.cryptocoin.polling.{BitfinexPollingActor, BitstampPollingActor, OKCoinPollingActor}
 import net.manub.embeddedkafka.EmbeddedKafka
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike}
 
@@ -84,6 +85,46 @@ class BitstampPollingActorSpec
     withRunningKafka {
       actorRef ! (timeCollected, entity)
       val expected = fixture("bitstamp-orderbook-kafka.json")
+      val result = consumeFirstStringMessageFrom("orderbooks")
+      assert(result == expected)
+    }
+  }
+}
+
+class OKCoinPollingActorSpec
+  extends HTTPPollingActorSpec(ActorSystem("OKCoinPollingActorSpecSystem")) {
+  implicit val materializer = ActorMaterializer()
+
+  val actorRef = TestActorRef[OKCoinPollingActor]
+  val actor = actorRef.underlyingActor
+  actor.tick.cancel
+  actor.orderbook.cancel
+
+  "OKCoinPollingActor" should "process a ticker message" in {
+    val timeCollected = Instant.ofEpochSecond(10L)
+    val contentType = ContentTypes.`text/html(UTF-8)`
+    val data = ByteString(fixture("okcoin-ticker-response.json"))
+    val entity = HttpEntity.Strict(contentType, data)
+    withRunningKafka {
+      Source.single((timeCollected, entity))
+        .via(actor.tickFlow)
+        .runWith(actor.kafkaSink("ticks"))
+      val expected = fixture("okcoin-ticker-kafka.json")
+      val result = consumeFirstStringMessageFrom("ticks")
+      assert(result == expected)
+    }
+  }
+
+  it should "process an orderbook message" in {
+    val timeCollected = Instant.ofEpochSecond(10L)
+    val contentType = ContentTypes.`text/html(UTF-8)`
+    val data = ByteString(fixture("okcoin-orderbook-response.json"))
+    val entity = HttpEntity.Strict(contentType, data)
+    withRunningKafka {
+      Source.single((timeCollected, entity))
+        .via(actor.orderbookFlow)
+        .runWith(actor.kafkaSink("orderbooks"))
+      val expected = fixture("okcoin-orderbook-kafka.json")
       val result = consumeFirstStringMessageFrom("orderbooks")
       assert(result == expected)
     }
