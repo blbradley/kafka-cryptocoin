@@ -2,13 +2,14 @@ package co.coinsmith.kafka.cryptocoin
 
 import java.time.Instant
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.stream.scaladsl.Source
 import akka.testkit.{TestActorRef, TestKit}
 import akka.util.ByteString
+import co.coinsmith.kafka.cryptocoin.polling.{BitfinexPollingActor, BitstampPollingActor}
 import net.manub.embeddedkafka.EmbeddedKafka
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, FlatSpecLike}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike}
 
 
 class HTTPPollingActorSpec(_system: ActorSystem) extends TestKit(_system)

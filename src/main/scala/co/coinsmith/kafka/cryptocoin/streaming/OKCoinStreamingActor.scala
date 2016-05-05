@@ -1,24 +1,17 @@
-package co.coinsmith.kafka.cryptocoin
+package co.coinsmith.kafka.cryptocoin.streaming
 
 import java.net.URI
 import java.time._
 import javax.websocket.MessageHandler.Whole
-import javax.websocket._
+import javax.websocket.{ClientEndpointConfig, Endpoint, EndpointConfig, Session}
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging}
+import co.coinsmith.kafka.cryptocoin.{KafkaProducer, Order, Utils}
 import org.glassfish.tyrus.client.ClientManager
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
-
-
-class StreamingActor extends Actor {
-  val okcoin = context.actorOf(Props[OKCoinStreamingActor], "okcoin")
-  def receive = {
-    case _ =>
-  }
-}
 
 class OKCoinStreamingActor extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
