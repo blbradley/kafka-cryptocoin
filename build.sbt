@@ -14,6 +14,8 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
 libraryDependencies += "com.typesafe.akka" %% "akka-testkit" % "2.4.4" % "test"
 libraryDependencies += "net.manub" %% "scalatest-embedded-kafka" % "0.4.3" % "test"
 
+resolvers += "clojars.org" at "http://clojars.org/repo"
+
 parallelExecution in Test := false
 
 enablePlugins(GitVersioning)
