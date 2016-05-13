@@ -1,6 +1,6 @@
 name := "kafka-cryptocoin"
 organization := "coinsmith"
-scalaVersion := "2.11.7"
+scalaVersion := "2.11.8"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.4"
 libraryDependencies += "com.typesafe.akka" %% "akka-http-experimental" % "2.4.4"
