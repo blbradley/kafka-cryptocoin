@@ -25,11 +25,16 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
         session.addMessageHandler(new Whole[String] {
           override def onMessage(message: String) {
             val timeCollected = Instant.now
-            // OKCoin websocket responses are always wrapped in an array
-            val json = parse(message)(0) transformField {
+
+            log.debug("Received message {} at time {}", message, timeCollected.toString)
+
+            // OKCoin websocket responses are an array of multiple events
+            parse(message) transformField {
               case JField("timestamp", JString(t)) => ("timestamp" -> Instant.ofEpochMilli(t.toLong).toString)
+            } match {
+              case JArray(arr) => arr.foreach { event => self ! (timeCollected, event) }
+              case _ => new Exception("Message did not contain array.")
             }
-            self ! (timeCollected, json)
           }
         })
         val channels = List(
