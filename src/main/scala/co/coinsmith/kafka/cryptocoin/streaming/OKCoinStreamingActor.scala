@@ -82,7 +82,7 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
       val bids = (data \ "bids").extract[List[List[BigDecimal]]]
         .map { o => new Order(o(0), o(1)) }
       val json = Utils.orderBookToJson(Some(timestamp), t, asks, bids)
-      self ! ("stream_depth", key, json)
+      self ! ("stream_orderbooks", key, json)
 
     case Data(t, "ok_sub_spotcny_btc_trades", data: JArray) =>
       val json = data.transform {
