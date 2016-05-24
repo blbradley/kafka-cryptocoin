@@ -1,22 +1,18 @@
+package streaming
+
 import java.time.Instant
 
 import akka.actor.ActorSystem
 import akka.testkit.{TestActorRef, TestKit}
 import co.coinsmith.kafka.cryptocoin.streaming.BitstampStreamingActor
 import net.manub.embeddedkafka.EmbeddedKafka
-import org.json4s.JsonAST.{JDecimal, JInt, JString}
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike}
+import org.json4s.JsonAST.{JDecimal, JInt}
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike}
 
-class BitstampStreamingActorSpec extends TestKit(ActorSystem("BitstampStreamingActorSpecSystem"))
-  with FlatSpecLike with BeforeAndAfterAll with EmbeddedKafka {
+class BitstampStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("BitstampStreamingActorSpecSystem")) {
   val actorRef = TestActorRef[BitstampStreamingActor]
-  val actor = actorRef.underlyingActor
-
-  override def afterAll {
-    TestKit.shutdownActorSystem(system)
-  }
 
   "BitstampStreamingActor" should "process a trade message" in {
     val timeCollected = Instant.ofEpochSecond(10L)

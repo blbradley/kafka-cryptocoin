@@ -1,14 +1,15 @@
 package co.coinsmith.kafka.cryptocoin
 
 import akka.actor.{Actor, Props}
-import co.coinsmith.kafka.cryptocoin.streaming.{BitstampStreamingActor, OKCoinStreamingActor}
+import co.coinsmith.kafka.cryptocoin.streaming.{BitstampStreamingActor, Connect, OKCoinStreamingActor}
 
 
 class StreamingActor extends Actor {
   val bitstamp = context.actorOf(Props[BitstampStreamingActor], "bitstamp")
   val okcoin = context.actorOf(Props[OKCoinStreamingActor], "okcoin")
 
-  bitstamp ! "connect"
+  bitstamp ! Connect
+  okcoin ! Connect
 
   def receive = {
     case _ =>

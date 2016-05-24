@@ -13,6 +13,8 @@ import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
+case class Data(timeCollected: Instant, channel: String, data: JValue)
+
 class OKCoinStreamingActor extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
   val key = "OKCoin"
@@ -51,14 +53,13 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
     }
   }
 
-  override def preStart = {
+  def connect = {
     client.connectToServer(endpoint, cec, new URI("wss://real.okcoin.cn:10440/websocket/okcoinapi"))
     log.info("OKCoin Websocket connected.")
   }
 
-  case class Data(timeCollected: Instant, channel: String, data: JValue)
-
   def receive = {
+    case Connect => connect
     case (t, JObject(JField("channel", JString(channel)) ::
                      JField("success", JString(success)) :: Nil)) =>
       log.info("Added channel {} at time {}.", channel, t)
