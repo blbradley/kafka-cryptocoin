@@ -56,7 +56,7 @@ class BitstampStreamingActor extends Actor with ActorLogging {
   }
 
   def receive = {
-    case "connect" => connect
+    case Connect => connect
     case ("live_trades", "trade", t: Instant, json: JValue) =>
       val trade = json transformField {
         case ("timestamp", JString(t)) => ("timestamp", t.toLong)
