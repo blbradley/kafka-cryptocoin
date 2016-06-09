@@ -5,6 +5,7 @@ import java.time.Instant
 import akka.actor.ActorSystem
 import akka.testkit.TestActorRef
 import co.coinsmith.kafka.cryptocoin.streaming.{Data, OKCoinStreamingActor}
+import org.json4s.JsonAST.JArray
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
@@ -39,6 +40,28 @@ class OKCoinStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("O
   }
 
   it should "process a trade message" in {
-    val timeCollected = Instant.ofEpochSecond(10L)
+    // OKCoin only returns the time of the trade
+    // timestamp should pull date from time collected
+    val timeCollected = Instant.ofEpochSecond(1464117326L)
+    val json = JArray(List(
+      "2949439265"
+      ,"2968.55"
+      ,"0.02",
+      "03:15:24",
+      "ask"
+    ))
+    val data = Data(timeCollected, "ok_sub_spotcny_btc_trades", json)
+    val expected = ("timestamp" -> "2016-05-24T19:15:24Z") ~
+      ("time_collected" -> "2016-05-24T19:15:26Z") ~
+        ("id" -> 2949439265L) ~
+        ("price" -> 2968.55) ~
+        ("volume" -> 0.02) ~
+        ("type" -> "ask")
+    withRunningKafka {
+      actorRef ! data
+      val msg = consumeFirstStringMessageFrom("stream_trades")
+      val result = parse(msg, true)
+      assert(result == expected)
+    }
   }
 }

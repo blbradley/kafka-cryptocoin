@@ -93,13 +93,15 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
     case Data(t, "ok_sub_spotcny_btc_trades", data: JArray) =>
       val json = data.transform {
         case JArray(JString(id) :: JString(p) :: JString(v) :: JString(time) :: JString(kind) :: Nil) =>
-          val collectedDateTime = LocalDateTime.ofInstant(t, ZoneId.of("Asia/Shanghai"))
-          var tradeDateTime = LocalTime.parse(time).atDate(collectedDateTime.toLocalDate)
-          if ((tradeDateTime compareTo collectedDateTime) > 0) {
+          val zone = ZoneId.of("Asia/Shanghai")
+          val collectedZoned = ZonedDateTime.ofInstant(t, ZoneOffset.UTC)
+            .withZoneSameInstant(zone)
+          var tradeZoned = LocalTime.parse(time).atDate(collectedZoned.toLocalDate).atZone(zone)
+          if ((tradeZoned compareTo collectedZoned) > 0) {
             // correct date if time collected happens right after midnight
-            tradeDateTime = tradeDateTime minusDays 1
+            tradeZoned = tradeZoned minusDays 1
           }
-          val timestamp = tradeDateTime.toInstant(ZoneOffset.UTC)
+          val timestamp = tradeZoned.withZoneSameInstant(ZoneOffset.UTC)
           ("timestamp" -> timestamp.toString) ~
             ("time_collected" -> t.toString) ~
             ("id" -> id.toLong) ~
