@@ -39,6 +39,44 @@ class OKCoinStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("O
     }
   }
 
+  it should "process an orderbook message" in {
+    val timeCollected = Instant.ofEpochSecond(10L)
+    val bids = List(
+      List(3841.52, 0.372),
+      List(3841.46, 0.548),
+      List(3841.4, 0.812)
+    )
+    val asks = List(
+      List(3844.75, 0.04),
+      List(3844.71, 5.181),
+      List(3844.63, 3.143)
+    )
+    val json = ("bids" -> bids) ~ ("asks" -> asks) ~ ("timestamp" -> "1465496881515")
+    val data = Data(timeCollected, "ok_sub_spotcny_btc_depth_60", json)
+
+    val bidsDecimal = List(
+      List(BigDecimal("3841.52"), BigDecimal("0.372")),
+      List(BigDecimal("3841.46"), BigDecimal("0.548")),
+      List(BigDecimal("3841.4"), BigDecimal("0.812"))
+    )
+    val asksDecimal = List(
+      List(BigDecimal("3844.75"), BigDecimal("0.04")),
+      List(BigDecimal("3844.71"), BigDecimal("5.181")),
+      List(BigDecimal("3844.63"), BigDecimal("3.143"))
+    )
+    val expected = ("time_collected" -> timeCollected.toString) ~
+      ("bids" -> bidsDecimal) ~
+      ("asks" -> asksDecimal) ~
+      ("timestamp" -> Instant.ofEpochMilli(1465496881515L).toString)
+
+    withRunningKafka {
+      actorRef ! data
+      val msg = consumeFirstStringMessageFrom("stream_orderbooks")
+      val result = parse(msg, true)
+      assert(result == expected)
+    }
+  }
+
   it should "process a trade message" in {
     // OKCoin only returns the time of the trade
     // timestamp should pull date from time collected
