@@ -15,7 +15,7 @@ import org.json4s.jackson.JsonMethods._
 
 case class Data(timeCollected: Instant, channel: String, data: JValue)
 
-class OKCoinStreamingActor extends Actor with ActorLogging {
+class OKCoinStreamingActor extends ExchangeStreamingActor {
   implicit val formats = DefaultFormats
   val key = "OKCoin"
 
@@ -82,13 +82,10 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
       self ! ("stream_ticks", key, json)
 
     case Data(t, "ok_sub_spotcny_btc_depth_60", data) =>
-      val timestamp = (data \ "timestamp").extract[String]
-      val asks = (data \ "asks").extract[List[List[BigDecimal]]]
-        .map { o => new Order(o(0), o(1)) }
-      val bids = (data \ "bids").extract[List[List[BigDecimal]]]
-        .map { o => new Order(o(0), o(1)) }
-      val json = Utils.orderBookToJson(Some(timestamp), t, asks, bids)
-      self ! ("stream_orderbooks", key, json)
+      val json = data.transformField {
+        case JField("timestamp", JString(t)) => JField("timestamp", Instant.ofEpochMilli(t.toLong).toString)
+      }
+      self ! ("stream_orderbooks", key, mergeInstant("time_collected", t, json))
 
     case Data(t, "ok_sub_spotcny_btc_trades", data: JArray) =>
       val json = data.transform {
