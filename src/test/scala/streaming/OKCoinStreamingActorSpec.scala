@@ -51,7 +51,8 @@ class OKCoinStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("O
       List(3844.71, 5.181),
       List(3844.63, 3.143)
     )
-    val json = ("bids" -> bids) ~ ("asks" -> asks) ~ ("timestamp" -> "1465496881515")
+    val timestamp = Instant.ofEpochMilli(1465496881515L)
+    val json = ("bids" -> bids) ~ ("asks" -> asks) ~ ("timestamp" -> timestamp.toString)
     val data = Data(timeCollected, "ok_sub_spotcny_btc_depth_60", json)
 
     val bidsDecimal = List(
@@ -67,7 +68,7 @@ class OKCoinStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("O
     val expected = ("time_collected" -> timeCollected.toString) ~
       ("bids" -> bidsDecimal) ~
       ("asks" -> asksDecimal) ~
-      ("timestamp" -> Instant.ofEpochMilli(1465496881515L).toString)
+      ("timestamp" -> timestamp.toString)
 
     withRunningKafka {
       actorRef ! data

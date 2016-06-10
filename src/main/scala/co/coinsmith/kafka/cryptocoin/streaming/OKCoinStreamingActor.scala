@@ -82,10 +82,7 @@ class OKCoinStreamingActor extends ExchangeStreamingActor {
       self ! ("stream_ticks", key, json)
 
     case Data(t, "ok_sub_spotcny_btc_depth_60", data) =>
-      val json = data.transformField {
-        case JField("timestamp", JString(t)) => JField("timestamp", Instant.ofEpochMilli(t.toLong).toString)
-      }
-      self ! ("stream_orderbooks", key, mergeInstant("time_collected", t, json))
+      self ! ("stream_orderbooks", key, mergeInstant("time_collected", t, data))
 
     case Data(t, "ok_sub_spotcny_btc_trades", data: JArray) =>
       val json = data.transform {
