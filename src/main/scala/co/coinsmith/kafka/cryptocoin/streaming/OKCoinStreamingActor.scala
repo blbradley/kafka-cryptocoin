@@ -2,12 +2,9 @@ package co.coinsmith.kafka.cryptocoin.streaming
 
 import java.net.URI
 import java.time._
-import javax.websocket.MessageHandler.Whole
-import javax.websocket.{ClientEndpointConfig, Endpoint, EndpointConfig, Session}
+import javax.websocket.Session
 
-import akka.actor.{Actor, ActorLogging}
-import co.coinsmith.kafka.cryptocoin.{KafkaProducer, Order, Utils}
-import org.glassfish.tyrus.client.ClientManager
+import co.coinsmith.kafka.cryptocoin.KafkaProducer
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
@@ -17,49 +14,30 @@ case class Data(timeCollected: Instant, channel: String, data: JValue)
 
 class OKCoinStreamingActor extends ExchangeStreamingActor {
   implicit val formats = DefaultFormats
-  val key = "OKCoin"
+  val name = "OKCoin"
+  val uri = new URI("wss://real.okcoin.cn:10440/websocket/okcoinapi")
 
-  val cec = ClientEndpointConfig.Builder.create().build
-  val client = ClientManager.createClient
-  val endpoint = new Endpoint {
-    override def onOpen(session: Session, config: EndpointConfig) = {
-      try {
-        session.addMessageHandler(new Whole[String] {
-          override def onMessage(message: String) {
-            val timeCollected = Instant.now
-
-            log.debug("Received message {} at time {}", message, timeCollected.toString)
-
-            // OKCoin websocket responses are an array of multiple events
-            parse(message) transformField {
-              case JField("timestamp", JString(t)) => ("timestamp" -> Instant.ofEpochMilli(t.toLong).toString)
-            } match {
-              case JArray(arr) => arr.foreach { event => self ! (timeCollected, event) }
-              case _ => new Exception("Message did not contain array.")
-            }
-          }
-        })
-        val channels = List(
-          ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_ticker"),
-          ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_depth_60"),
-          ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_trades")
-        )
-        val msg = compact(render(channels))
-        session.getBasicRemote.sendText(msg)
-        log.debug("Sent initialization message: {}", msg)
-      } catch {
-        case ex: Exception => throw ex
-      }
-    }
-  }
-
-  def connect = {
-    client.connectToServer(endpoint, cec, new URI("wss://real.okcoin.cn:10440/websocket/okcoinapi"))
-    log.info("OKCoin Websocket connected.")
+  def subscribe(session: Session) = {
+    val channels = List(
+      ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_ticker"),
+      ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_depth_60"),
+      ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_trades")
+    )
+    val msg = compact(render(channels))
+    session.getBasicRemote.sendText(msg)
+    log.debug("Sent initialization message: {}", msg)
   }
 
   def receive = {
     case Connect => connect
+    case (t, events: JArray) =>
+      // OKCoin websocket responses are an array of multiple events
+      events transformField {
+        case JField("timestamp", JString(t)) => ("timestamp" -> Instant.ofEpochMilli(t.toLong).toString)
+      } match {
+        case JArray(arr) => arr.foreach { event => self !(t, event) }
+        case _ => new Exception("Message did not contain array.")
+      }
     case (t, JObject(JField("channel", JString(channel)) ::
                      JField("success", JString(success)) :: Nil)) =>
       log.info("Added channel {} at time {}.", channel, t)
@@ -79,10 +57,10 @@ class OKCoinStreamingActor extends ExchangeStreamingActor {
         case JField("vol", JString(v)) => JField("volume", JDecimal(BigDecimal(v.replace(",", ""))))
         case JField(key, JString(value)) if key != "timestamp" => JField(key, JDecimal(BigDecimal(value)))
       } merge render("time_collected" -> t.toString)
-      self ! ("stream_ticks", key, json)
+      self ! ("stream_ticks", name, json)
 
     case Data(t, "ok_sub_spotcny_btc_depth_60", data) =>
-      self ! ("stream_orderbooks", key, mergeInstant("time_collected", t, data))
+      self ! ("stream_orderbooks", name, mergeInstant("time_collected", t, data))
 
     case Data(t, "ok_sub_spotcny_btc_trades", data: JArray) =>
       val json = data.transform {
@@ -103,7 +81,7 @@ class OKCoinStreamingActor extends ExchangeStreamingActor {
             ("volume" -> BigDecimal(v)) ~
             ("type" -> kind)
       }
-      self ! ("stream_trades", key, json)
+      self ! ("stream_trades", name, json)
 
     case (topic: String, key: String, json: JValue) =>
       val msg = compact(render(json))
