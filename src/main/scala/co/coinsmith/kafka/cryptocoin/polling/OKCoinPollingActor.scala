@@ -1,14 +1,10 @@
 package co.coinsmith.kafka.cryptocoin.polling
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 import java.time.Instant
 
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, ResponseEntity}
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.util.ByteString
-import co.coinsmith.kafka.cryptocoin.KafkaProducer
+import akka.http.scaladsl.model.ResponseEntity
+import akka.stream.scaladsl.Flow
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
@@ -19,8 +15,7 @@ class OKCoinPollingActor extends HTTPPollingActor {
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("www.okcoin.cn")
 
   val tickFlow = Flow[(Instant, ResponseEntity)].map { t =>
-    val data = concatByteStringSource(t._2.dataBytes)
-    val json = parse(data.utf8String)
+    val json = parse(responseEntityToString(t._2))
     val ticker = json \ "ticker" transformField {
       case JField(key, JString(v)) => JField(key, JDecimal(BigDecimal(v)))
     } transformField {
@@ -34,30 +29,17 @@ class OKCoinPollingActor extends HTTPPollingActor {
   }
 
   val orderbookFlow = Flow[(Instant, ResponseEntity)].map { t =>
-    val data = concatByteStringSource(t._2.dataBytes)
-    val json = parse(data.utf8String)
+    val json = parse(responseEntityToString(t._2))
     render("time_collected" -> t._1.toString) merge json
-  }
-
-  def concatByteStringSource(dataBytes: Source[ByteString, Any]): ByteString = {
-    Await.result(dataBytes.runReduce(_ ++ _), Duration.Inf)
-  }
-
-  def kafkaSink(topic: String) = Sink.foreach[JValue] {
-    case json => KafkaProducer.send(topic, key, compact(render(json)))
   }
 
   def receive = {
     case "tick" =>
-      Source.single(HttpRequest(uri = "/api/v1/ticker.do?symbol=btc_cny") -> "")
-        .via(pool)
-        .via(responseFlow)
+      request("/api/v1/ticker.do?symbol=btc_cny")
         .via(tickFlow)
         .runWith(kafkaSink("ticks"))
     case "orderbook" =>
-      Source.single(HttpRequest(uri = "/api/v1/depth.do??symbol=btc_cny") -> "")
-        .via(pool)
-        .via(responseFlow)
+      request("/api/v1/depth.do??symbol=btc_cny")
         .via(orderbookFlow)
         .runWith(kafkaSink("orderbooks"))
   }
