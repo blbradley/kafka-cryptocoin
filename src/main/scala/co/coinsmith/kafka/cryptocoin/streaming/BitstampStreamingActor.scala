@@ -15,7 +15,7 @@ import org.json4s.jackson.JsonMethods._
 case class Topic(name: String)
 
 class BitstampStreamingActor extends Actor with ActorLogging {
-  val key = "Bitstamp"
+  val topicPrefix = "bitstamp.streaming.btcusd."
 
   val pusher = new Pusher("de504dc5763aeef9ff52")
   val connectionEventListener = new ConnectionEventListener {
@@ -62,23 +62,23 @@ class BitstampStreamingActor extends Actor with ActorLogging {
         case ("timestamp", JString(t)) => ("timestamp", t.toLong)
         case ("amount", v) => ("volume", v)
       }
-      self ! (Topic("stream_trades"), mergeInstant("time_collected", t, trade))
+      self ! (Topic("trades"), mergeInstant("time_collected", t, trade))
     case ("order_book", "data", t: Instant, json: JValue) =>
       val ob = json transform {
         case JString(v) => JDecimal(BigDecimal(v))
       }
-      self ! (Topic("stream_orderbooks"), mergeInstant("time_collected", t, ob))
+      self ! (Topic("orderbook"), mergeInstant("time_collected", t, ob))
     case ("diff_order_book", "data", t: Instant, json: JValue) =>
       val diff = json transformField {
         case ("timestamp", JString(t)) => ("timestamp", t.toLong)
       } transform {
         case JString(v) => JDecimal(BigDecimal(v))
       }
-      self ! (Topic("stream_orderbook_diffs"), mergeInstant("time_collected", t, diff))
+      self ! (Topic("orderbook.updates"), mergeInstant("time_collected", t, diff))
     case (topic: Topic, json: JValue) =>
       val msg = json transformField {
         case ("timestamp", JInt(t)) => ("timestamp", Instant.ofEpochSecond(t.toLong).toString)
       }
-      KafkaProducer.send(topic.name, key, compact(render(msg)))
+      KafkaProducer.send(topicPrefix + topic.name, null, compact(render(msg)))
   }
 }

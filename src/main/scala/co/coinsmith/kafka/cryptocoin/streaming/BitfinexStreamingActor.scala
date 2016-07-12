@@ -11,19 +11,19 @@ import org.json4s.jackson.JsonMethods._
 
 
 class BitfinexStreamingActor extends ExchangeStreamingActor {
-  val name = "Bitfinex"
+  val topicPrefix = "bitfinex.streaming.btcusd."
   val uri = new URI("wss://api2.bitfinex.com:3000/ws")
 
   var subscribed = Map.empty[BigInt, String]
   def getChannelName(channelId: BigInt) = subscribed(channelId)
   def topic(channelId: BigInt, updateType: String): String = {
     (getChannelName(channelId), updateType) match {
-      case ("book", "snapshot") => "streaming.btcusd.orderbook.snapshots"
-      case ("book", "update") => "streaming.btcusd.orderbook"
-      case ("trades", "snapshot") => "streaming.btcusd.trades.snapshots"
-      case ("trades", "tu") => "streaming.btcusd.trades"
-      case ("trades", "te") => "streaming.btcusd.trades.executions"
-      case ("ticker", "ticker") => "streaming.btcusd.ticker"
+      case ("book", "snapshot")   => "orderbook.snapshots"
+      case ("book", "update")     => "orderbook"
+      case ("trades", "snapshot") => "trades.snapshots"
+      case ("trades", "tu")       => "trades"
+      case ("trades", "te")       => "trades.executions"
+      case ("ticker", "ticker")   => "ticker"
     }
   }
 
@@ -92,7 +92,7 @@ class BitfinexStreamingActor extends ExchangeStreamingActor {
       self ! (topic(channelId, updateType), JArray(xs))
     case (topic: String, json: JValue) =>
       val msg = compact(render(json))
-      KafkaProducer.send(name.toLowerCase + "." + topic, null, msg)
+      KafkaProducer.send(topicPrefix + topic, null, msg)
     case m => throw new Exception(s"Unhandled message: $m")
   }
 }

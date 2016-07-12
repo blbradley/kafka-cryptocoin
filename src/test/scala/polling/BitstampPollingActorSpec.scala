@@ -25,7 +25,7 @@ class BitstampPollingActorSpec
     withRunningKafka {
       actorRef ! (timeCollected, entity)
       val expected = fixture("bitstamp-ticker-kafka.json")
-      val result = consumeFirstStringMessageFrom("ticks")
+      val result = consumeFirstStringMessageFrom("bitstamp.polling.btcusd.ticks")
       assert(result == expected)
     }
   }
@@ -39,7 +39,7 @@ class BitstampPollingActorSpec
     withRunningKafka {
       actorRef ! (timeCollected, entity)
       val expected = fixture("bitstamp-orderbook-kafka.json")
-      val result = consumeFirstStringMessageFrom("orderbooks")
+      val result = consumeFirstStringMessageFrom("bitstamp.polling.btcusd.orderbook")
       assert(result == expected)
     }
   }

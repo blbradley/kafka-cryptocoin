@@ -12,7 +12,7 @@ import org.json4s.jackson.JsonMethods._
 
 
 class BitfinexPollingActor extends HTTPPollingActor {
-  val key = "BitFinex"
+  val topicPrefix = "bitfinex.polling.btcusd."
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("api.bitfinex.com")
 
   val tickFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
@@ -42,10 +42,10 @@ class BitfinexPollingActor extends HTTPPollingActor {
     case "tick" =>
       request("/v1/pubticker/btcusd")
         .via(tickFlow)
-        .runWith(kafkaSink("ticks"))
+        .runWith(kafkaSink(topicPrefix + "ticks"))
     case "orderbook" =>
       request("/v1/book/btcusd")
         .via(orderbookFlow)
-        .runWith(kafkaSink("orderbooks"))
+        .runWith(kafkaSink(topicPrefix + "orderbook"))
   }
 }

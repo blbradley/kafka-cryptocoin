@@ -11,7 +11,7 @@ import org.json4s.jackson.JsonMethods._
 
 
 class OKCoinPollingActor extends HTTPPollingActor {
-  val key = "OKCoin"
+  val topicPrefix = "okcoin.polling.btcusd."
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("www.okcoin.cn")
 
   val tickFlow = Flow[(Instant, ResponseEntity)].map { t =>
@@ -37,10 +37,10 @@ class OKCoinPollingActor extends HTTPPollingActor {
     case "tick" =>
       request("/api/v1/ticker.do?symbol=btc_cny")
         .via(tickFlow)
-        .runWith(kafkaSink("ticks"))
+        .runWith(kafkaSink(topicPrefix + "ticks"))
     case "orderbook" =>
       request("/api/v1/depth.do??symbol=btc_cny")
         .via(orderbookFlow)
-        .runWith(kafkaSink("orderbooks"))
+        .runWith(kafkaSink(topicPrefix + "orderbook"))
   }
 }

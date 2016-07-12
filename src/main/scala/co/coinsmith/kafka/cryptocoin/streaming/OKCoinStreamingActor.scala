@@ -14,7 +14,7 @@ case class Data(timeCollected: Instant, channel: String, data: JValue)
 
 class OKCoinStreamingActor extends ExchangeStreamingActor {
   implicit val formats = DefaultFormats
-  val name = "OKCoin"
+  val topicPrefix = "okcoin.streaming.btcusd."
   val uri = new URI("wss://real.okcoin.cn:10440/websocket/okcoinapi")
 
   def subscribe(session: Session) = {
@@ -57,10 +57,10 @@ class OKCoinStreamingActor extends ExchangeStreamingActor {
         case JField("vol", JString(v)) => JField("volume", JDecimal(BigDecimal(v.replace(",", ""))))
         case JField(key, JString(value)) if key != "timestamp" => JField(key, JDecimal(BigDecimal(value)))
       } merge render("time_collected" -> t.toString)
-      self ! ("stream_ticks", name, json)
+      self ! ("ticks", json)
 
     case Data(t, "ok_sub_spotcny_btc_depth_60", data) =>
-      self ! ("stream_orderbooks", name, mergeInstant("time_collected", t, data))
+      self ! ("orderbook", mergeInstant("time_collected", t, data))
 
     case Data(t, "ok_sub_spotcny_btc_trades", data: JArray) =>
       val json = data.transform {
@@ -81,10 +81,10 @@ class OKCoinStreamingActor extends ExchangeStreamingActor {
             ("volume" -> BigDecimal(v)) ~
             ("type" -> kind)
       }
-      self ! ("stream_trades", name, json)
+      self ! ("trades", json)
 
-    case (topic: String, key: String, json: JValue) =>
+    case (topic: String, json: JValue) =>
       val msg = compact(render(json))
-      KafkaProducer.send(topic, key, msg)
+      KafkaProducer.send(topicPrefix + topic, null, msg)
   }
 }

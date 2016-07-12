@@ -2,6 +2,12 @@ CHANGELOG
 =========
 
 
+v0.0.2
+------
+
+* Topic per exchange and data type
+
+
 v0.0.1
 ------
 
