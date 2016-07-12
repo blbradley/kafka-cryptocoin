@@ -13,7 +13,7 @@ import org.json4s.jackson.JsonMethods._
 
 
 abstract class ExchangeStreamingActor extends Actor with ActorLogging {
-  val name: String
+  val topicPrefix: String
   val uri : URI
 
   val cec = ClientEndpointConfig.Builder.create().build
@@ -40,7 +40,7 @@ abstract class ExchangeStreamingActor extends Actor with ActorLogging {
 
   def connect = {
     client.connectToServer(endpoint, cec, uri)
-    log.info(name + " Websocket connected.")
+    log.info("Websocket connected.")
   }
 
   def mergeInstant(key: String, t: Instant, json: JValue) = {

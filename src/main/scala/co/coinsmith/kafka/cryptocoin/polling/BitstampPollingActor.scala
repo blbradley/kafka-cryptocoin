@@ -16,7 +16,7 @@ import org.json4s.jackson.JsonMethods._
 
 
 class BitstampPollingActor extends HTTPPollingActor {
-  val key = "bitstamp"
+  val topicPrefix = "bitstamp.polling.btcusd."
   import context.dispatcher
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("www.bitstamp.net")
 
@@ -60,10 +60,10 @@ class BitstampPollingActor extends HTTPPollingActor {
             val bids = (json \ "bids").extract[List[List[String]]]
               .map { o => new Order(BigDecimal(o(0)), BigDecimal(o(1))) }
             val orderbook = Utils.orderBookToJson(Some(timestamp), t, asks, bids)
-            self ! ("orderbooks", orderbook)
+            self ! ("orderbook", orderbook)
         }
     case (topic: String, json: JValue) =>
       val msg = compact(render(json))
-      KafkaProducer.send(topic, key, msg)
+      KafkaProducer.send(topicPrefix + topic, null, msg)
   }
 }

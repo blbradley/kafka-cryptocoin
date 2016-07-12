@@ -29,7 +29,7 @@ class BitstampStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem(
       ("id" -> 11151677)
     withRunningKafka {
       actorRef ! ("live_trades", "trade", timeCollected, json)
-      val msg = consumeFirstStringMessageFrom("stream_trades")
+      val msg = consumeFirstStringMessageFrom("bitstamp.streaming.btcusd.trades")
       val result = parse(msg, true)
       assert(result == expected)
     }
@@ -65,7 +65,7 @@ class BitstampStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem(
 
     withRunningKafka {
       actorRef ! ("order_book", "data", timeCollected, json)
-      val msg = consumeFirstStringMessageFrom("stream_orderbooks")
+      val msg = consumeFirstStringMessageFrom("bitstamp.streaming.btcusd.orderbook")
       val result = parse(msg, true)
       assert(result == expected)
     }
@@ -102,7 +102,7 @@ class BitstampStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem(
 
     withRunningKafka {
       actorRef ! ("diff_order_book", "data", timeCollected, json)
-      val msg = consumeFirstStringMessageFrom("stream_orderbook_diffs")
+      val msg = consumeFirstStringMessageFrom("bitstamp.streaming.btcusd.orderbook.updates")
       val result = parse(msg, true) transform {
         case JInt(v) => JDecimal(BigDecimal(v))
       }

@@ -33,7 +33,7 @@ class OKCoinStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("O
       ("time_collected" -> "1970-01-01T00:00:10Z")
     withRunningKafka {
       actorRef ! data
-      val msg = consumeFirstStringMessageFrom("stream_ticks")
+      val msg = consumeFirstStringMessageFrom("okcoin.streaming.btcusd.ticks")
       val result = parse(msg, true)
       assert(result == expected)
     }
@@ -72,7 +72,7 @@ class OKCoinStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("O
 
     withRunningKafka {
       actorRef ! data
-      val msg = consumeFirstStringMessageFrom("stream_orderbooks")
+      val msg = consumeFirstStringMessageFrom("okcoin.streaming.btcusd.orderbook")
       val result = parse(msg, true)
       assert(result == expected)
     }
@@ -98,7 +98,7 @@ class OKCoinStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("O
         ("type" -> "ask")
     withRunningKafka {
       actorRef ! data
-      val msg = consumeFirstStringMessageFrom("stream_trades")
+      val msg = consumeFirstStringMessageFrom("okcoin.streaming.btcusd.trades")
       val result = parse(msg, true)
       assert(result == expected)
     }
