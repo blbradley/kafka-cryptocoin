@@ -10,7 +10,7 @@ import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
-import co.coinsmith.kafka.cryptocoin.{KafkaProducer, Order, Utils}
+import co.coinsmith.kafka.cryptocoin.{Order, Utils}
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._

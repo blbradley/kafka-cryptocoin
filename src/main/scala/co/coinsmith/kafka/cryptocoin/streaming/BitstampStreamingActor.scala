@@ -3,8 +3,7 @@ package co.coinsmith.kafka.cryptocoin.streaming
 import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging}
-import co.coinsmith.kafka.cryptocoin.KafkaProducer
-import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
+import co.coinsmith.kafka.cryptocoin.producer.{Producer, ProducerBehavior}
 import com.pusher.client.Pusher
 import com.pusher.client.channel.ChannelEventListener
 import com.pusher.client.connection.{ConnectionEventListener, ConnectionState, ConnectionStateChange}

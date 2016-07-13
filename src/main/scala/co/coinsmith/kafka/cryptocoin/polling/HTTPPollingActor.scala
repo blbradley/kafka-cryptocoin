@@ -10,7 +10,7 @@ import akka.http.scaladsl.Http.HostConnectionPool
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, ResponseEntity}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
-import co.coinsmith.kafka.cryptocoin.KafkaProducer
+import co.coinsmith.kafka.cryptocoin.producer.Producer
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST.JValue
 import org.json4s.jackson.JsonMethods._
