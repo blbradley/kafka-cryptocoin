@@ -1,7 +1,6 @@
 package co.coinsmith.kafka.cryptocoin.producer
 
 import akka.actor.Actor
-import co.coinsmith.kafka.cryptocoin.KafkaProducer
 import org.json4s.JsonAST.JValue
 import org.json4s.jackson.JsonMethods._
 
@@ -14,7 +13,7 @@ trait ProducerBehavior {
   val producerBehavior: Receive = {
     case (topic: String, json: JValue) =>
       val msg = compact(render(json))
-      KafkaProducer.send(topicPrefix + topic, null, msg)
+      Producer.send(topicPrefix + topic, msg)
   }
 
 }
