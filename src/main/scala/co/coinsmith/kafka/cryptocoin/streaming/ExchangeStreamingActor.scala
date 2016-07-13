@@ -13,7 +13,6 @@ import org.json4s.jackson.JsonMethods._
 
 
 abstract class ExchangeStreamingActor extends Actor with ActorLogging {
-  val topicPrefix: String
   val uri : URI
 
   val cec = ClientEndpointConfig.Builder.create().build

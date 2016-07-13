@@ -28,7 +28,7 @@ class OKCoinPollingActorSpec
     withRunningKafka {
       Source.single((timeCollected, entity))
         .via(actor.tickFlow)
-        .runWith(actor.kafkaSink("okcoin.polling.btcusd.ticks"))
+        .runWith(actor.selfSink)
       val expected = fixture("okcoin-ticker-kafka.json")
       val result = consumeFirstStringMessageFrom("okcoin.polling.btcusd.ticks")
       assert(result == expected)
@@ -43,7 +43,7 @@ class OKCoinPollingActorSpec
     withRunningKafka {
       Source.single((timeCollected, entity))
         .via(actor.orderbookFlow)
-        .runWith(actor.kafkaSink("okcoin.polling.btcusd.orderbook"))
+        .runWith(actor.selfSink)
       val expected = fixture("okcoin-orderbook-kafka.json")
       val result = consumeFirstStringMessageFrom("okcoin.polling.btcusd.orderbook")
       assert(result == expected)

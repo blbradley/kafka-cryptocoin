@@ -48,7 +48,7 @@ class BitfinexPollingActorSpec
     withRunningKafka {
       Source.single((timeCollected, entity))
         .via(actor.tickFlow)
-        .runWith(actor.kafkaSink("bitfinex.polling.btcusd.ticks"))
+        .runWith(actor.selfSink)
       val msg = consumeFirstStringMessageFrom("bitfinex.polling.btcusd.ticks")
       val result = parse(msg, true)
       assert(result == expected)
@@ -80,7 +80,7 @@ class BitfinexPollingActorSpec
     withRunningKafka {
       Source.single((timeCollected, entity))
         .via(actor.orderbookFlow)
-        .runWith(actor.kafkaSink("bitfinex.polling.btcusd.orderbook"))
+        .runWith(actor.selfSink)
       val msg = consumeFirstStringMessageFrom("bitfinex.polling.btcusd.orderbook")
       val result = parse(msg, true)
       assert(result == expected)

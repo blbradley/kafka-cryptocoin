@@ -4,13 +4,13 @@ import java.net.URI
 import java.time.Instant
 import javax.websocket.Session
 
-import co.coinsmith.kafka.cryptocoin.KafkaProducer
+import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
 
-class BitfinexStreamingActor extends ExchangeStreamingActor {
+class BitfinexStreamingActor extends ExchangeStreamingActor with ProducerBehavior {
   val topicPrefix = "bitfinex.streaming.btcusd."
   val uri = new URI("wss://api2.bitfinex.com:3000/ws")
 
@@ -55,7 +55,7 @@ class BitfinexStreamingActor extends ExchangeStreamingActor {
     case _ => true
   }
 
-  def receive = {
+  def receive = producerBehavior orElse {
     case Connect => connect
     case (t, JObject(JField("event", JString("subscribed")) ::
                      JField("channel", JString(channelName)) ::
@@ -90,9 +90,6 @@ class BitfinexStreamingActor extends ExchangeStreamingActor {
         case 10 => "ticker"
       }
       self ! (topic(channelId, updateType), JArray(xs))
-    case (topic: String, json: JValue) =>
-      val msg = compact(render(json))
-      KafkaProducer.send(topicPrefix + topic, null, msg)
     case m => throw new Exception(s"Unhandled message: $m")
   }
 }
