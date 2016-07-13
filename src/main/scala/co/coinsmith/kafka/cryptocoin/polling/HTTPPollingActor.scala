@@ -39,9 +39,7 @@ abstract class HTTPPollingActor extends Actor with ActorLogging {
     Await.result(data, 500 millis)
   }
 
-  def kafkaSink(topic: String) = Sink.foreach[JValue] {
-    case json => KafkaProducer.send(topic, null, compact(render(json)))
-  }
+  val selfSink = Sink.actorRef(self, None)
 
   def request(uri: String) =
     Source.single(HttpRequest(uri = uri) -> "")

@@ -4,6 +4,7 @@ import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging}
 import co.coinsmith.kafka.cryptocoin.KafkaProducer
+import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import com.pusher.client.Pusher
 import com.pusher.client.channel.ChannelEventListener
 import com.pusher.client.connection.{ConnectionEventListener, ConnectionState, ConnectionStateChange}
@@ -12,9 +13,7 @@ import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
 
-case class Topic(name: String)
-
-class BitstampStreamingActor extends Actor with ActorLogging {
+class BitstampStreamingActor extends Actor with ActorLogging with ProducerBehavior {
   val topicPrefix = "bitstamp.streaming.btcusd."
 
   val pusher = new Pusher("de504dc5763aeef9ff52")
@@ -55,30 +54,26 @@ class BitstampStreamingActor extends Actor with ActorLogging {
     render(key -> t.toString) merge json
   }
 
-  def receive = {
+  def receive = producerBehavior orElse {
     case Connect => connect
     case ("live_trades", "trade", t: Instant, json: JValue) =>
       val trade = json transformField {
-        case ("timestamp", JString(t)) => ("timestamp", t.toLong)
+        case ("timestamp", JString(t)) => ("timestamp", Instant.ofEpochSecond(t.toLong).toString)
         case ("amount", v) => ("volume", v)
       }
-      self ! (Topic("trades"), mergeInstant("time_collected", t, trade))
+      self ! ("trades", mergeInstant("time_collected", t, trade))
     case ("order_book", "data", t: Instant, json: JValue) =>
       val ob = json transform {
         case JString(v) => JDecimal(BigDecimal(v))
       }
-      self ! (Topic("orderbook"), mergeInstant("time_collected", t, ob))
+      self ! ("orderbook", mergeInstant("time_collected", t, ob))
     case ("diff_order_book", "data", t: Instant, json: JValue) =>
       val diff = json transformField {
         case ("timestamp", JString(t)) => ("timestamp", t.toLong)
       } transform {
+        case JInt(t) => JString(Instant.ofEpochSecond(t.toLong).toString)
         case JString(v) => JDecimal(BigDecimal(v))
       }
-      self ! (Topic("orderbook.updates"), mergeInstant("time_collected", t, diff))
-    case (topic: Topic, json: JValue) =>
-      val msg = json transformField {
-        case ("timestamp", JInt(t)) => ("timestamp", Instant.ofEpochSecond(t.toLong).toString)
-      }
-      KafkaProducer.send(topicPrefix + topic.name, null, compact(render(msg)))
+      self ! ("orderbook.updates", mergeInstant("time_collected", t, diff))
   }
 }

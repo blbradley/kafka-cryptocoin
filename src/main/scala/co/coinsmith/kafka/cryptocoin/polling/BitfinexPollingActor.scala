@@ -4,19 +4,20 @@ import java.time.Instant
 
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ResponseEntity
-import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.{Flow, Sink}
+import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import co.coinsmith.kafka.cryptocoin.{Order, Utils}
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
 
-class BitfinexPollingActor extends HTTPPollingActor {
+class BitfinexPollingActor extends HTTPPollingActor with ProducerBehavior {
   val topicPrefix = "bitfinex.polling.btcusd."
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("api.bitfinex.com")
 
   val tickFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
-    parse(responseEntityToString(entity)) transform {
+    val json = parse(responseEntityToString(entity)) transform {
       case JString(v) => JDecimal(BigDecimal(v))
     } transformField {
       case JField("timestamp", JDecimal(v)) =>
@@ -25,6 +26,7 @@ class BitfinexPollingActor extends HTTPPollingActor {
         JField("timestamp", JString(timestamp.toString))
       case JField("last_price", v) => JField("last", v)
     } merge render("time_collected" -> t.toString)
+    ("ticks", json)
   }
 
   val orderbookFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
@@ -35,17 +37,17 @@ class BitfinexPollingActor extends HTTPPollingActor {
     }
     val asks = (json \ "asks").extract[List[Order]]
     val bids = (json \ "bids").extract[List[Order]]
-    Utils.orderBookToJson(None, t, asks, bids)
+    ("orderbook", Utils.orderBookToJson(None, t, asks, bids))
   }
 
-  def receive = {
+  def receive = producerBehavior orElse {
     case "tick" =>
       request("/v1/pubticker/btcusd")
         .via(tickFlow)
-        .runWith(kafkaSink(topicPrefix + "ticks"))
+        .runWith(selfSink)
     case "orderbook" =>
       request("/v1/book/btcusd")
         .via(orderbookFlow)
-        .runWith(kafkaSink(topicPrefix + "orderbook"))
+        .runWith(selfSink)
   }
 }

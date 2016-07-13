@@ -4,7 +4,7 @@ import java.net.URI
 import java.time._
 import javax.websocket.Session
 
-import co.coinsmith.kafka.cryptocoin.KafkaProducer
+import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
@@ -12,7 +12,7 @@ import org.json4s.jackson.JsonMethods._
 
 case class Data(timeCollected: Instant, channel: String, data: JValue)
 
-class OKCoinStreamingActor extends ExchangeStreamingActor {
+class OKCoinStreamingActor extends ExchangeStreamingActor with ProducerBehavior {
   implicit val formats = DefaultFormats
   val topicPrefix = "okcoin.streaming.btcusd."
   val uri = new URI("wss://real.okcoin.cn:10440/websocket/okcoinapi")
@@ -28,7 +28,7 @@ class OKCoinStreamingActor extends ExchangeStreamingActor {
     log.debug("Sent initialization message: {}", msg)
   }
 
-  def receive = {
+  def receive = producerBehavior orElse {
     case Connect => connect
     case (t: Instant, events: JArray) =>
       // OKCoin websocket responses are an array of multiple events
@@ -82,9 +82,5 @@ class OKCoinStreamingActor extends ExchangeStreamingActor {
             ("type" -> kind)
       }
       self ! ("trades", json)
-
-    case (topic: String, json: JValue) =>
-      val msg = compact(render(json))
-      KafkaProducer.send(topicPrefix + topic, null, msg)
   }
 }
