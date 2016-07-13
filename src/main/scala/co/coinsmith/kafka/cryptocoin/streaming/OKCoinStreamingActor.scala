@@ -30,7 +30,7 @@ class OKCoinStreamingActor extends ExchangeStreamingActor {
 
   def receive = {
     case Connect => connect
-    case (t, events: JArray) =>
+    case (t: Instant, events: JArray) =>
       // OKCoin websocket responses are an array of multiple events
       events transformField {
         case JField("timestamp", JString(t)) => ("timestamp" -> Instant.ofEpochMilli(t.toLong).toString)
@@ -38,11 +38,11 @@ class OKCoinStreamingActor extends ExchangeStreamingActor {
         case JArray(arr) => arr.foreach { event => self !(t, event) }
         case _ => new Exception("Message did not contain array.")
       }
-    case (t, JObject(JField("channel", JString(channel)) ::
+    case (t: Instant, JObject(JField("channel", JString(channel)) ::
                      JField("success", JString(success)) :: Nil)) =>
       log.info("Added channel {} at time {}.", channel, t)
 
-    case (t, JObject(JField("channel", JString(channel)) ::
+    case (t: Instant, JObject(JField("channel", JString(channel)) ::
                    JField("success", JString(success)) ::
                    JField("error_code", JInt(errorCode)) :: Nil)) =>
       log.error("Adding channel {} failed at time {}. Error code {}.", channel, t, errorCode)
