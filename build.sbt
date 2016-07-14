@@ -2,6 +2,7 @@ name := "kafka-cryptocoin"
 organization := "coinsmith"
 scalaVersion := "2.11.8"
 
+libraryDependencies += "org.slf4j" % "slf4j-log4j12" % "1.7.21"
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.8"
 libraryDependencies += "com.typesafe.akka" %% "akka-http-experimental" % "2.4.8"
 libraryDependencies += "org.apache.kafka" % "kafka-clients" % "0.10.0.0"
