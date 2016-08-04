@@ -12,9 +12,12 @@ libraryDependencies += "org.glassfish.tyrus.bundles" % "tyrus-standalone-client-
 libraryDependencies += "org.glassfish.tyrus" % "tyrus-container-grizzly-client" % "1.13"
 libraryDependencies += "com.pusher" % "pusher-java-client" % "1.2.0"
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
-libraryDependencies += "com.typesafe.akka" %% "akka-testkit" % "2.4.8" % "test"
-libraryDependencies += "net.manub" %% "scalatest-embedded-kafka" % "0.7.0" % "test"
+libraryDependencies ++= Seq(
+  "org.scalatest" %% "scalatest" % "2.2.6" % "test",
+  "com.typesafe.akka" %% "akka-testkit" % "2.4.8" % "test",
+  "com.typesafe.akka" %% "akka-stream-testkit" % "2.4.8" % "test",
+  "net.manub" %% "scalatest-embedded-kafka" % "0.7.0" % "test"
+)
 
 resolvers += "clojars.org" at "http://clojars.org/repo"
 

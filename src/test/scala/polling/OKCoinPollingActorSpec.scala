@@ -41,14 +41,10 @@ class OKCoinPollingActorSpec
       ("low" -> 2885.6) ~
       ("ask" -> 2906.63) ~
       ("volume" -> 635178.4712)
-    withRunningKafka {
-      Source.single((timeCollected, entity))
-        .via(actor.tickFlow)
-        .runWith(actor.selfSink)
-      val msg = consumeFirstStringMessageFrom("okcoin.polling.btcusd.ticks")
-      val result = parse(msg, true)
-      assert(result == expected)
-    }
+
+    val (pub, sub) = testExchangeFlowPubSub(actor.tickFlow).run()
+    pub.sendNext((timeCollected, entity))
+    sub.requestNext(("ticks", expected))
   }
 
   it should "process an orderbook message" in {
@@ -76,13 +72,9 @@ class OKCoinPollingActorSpec
         List(2906.76, 0.01),
         List(2906.75, 0.082)
       ))
-    withRunningKafka {
-      Source.single((timeCollected, entity))
-        .via(actor.orderbookFlow)
-        .runWith(actor.selfSink)
-      val msg = consumeFirstStringMessageFrom("okcoin.polling.btcusd.orderbook")
-      val result = parse(msg, true)
-      assert(result == expected)
-    }
+    
+    val (pub, sub) = testExchangeFlowPubSub(actor.orderbookFlow).run()
+    pub.sendNext((timeCollected, entity))
+    sub.requestNext(("orderbook", expected))
   }
 }
