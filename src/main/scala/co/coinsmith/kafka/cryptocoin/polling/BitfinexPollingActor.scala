@@ -40,7 +40,7 @@ class BitfinexPollingActor extends HTTPPollingActor with ProducerBehavior {
     ("orderbook", Utils.orderBookToJson(None, t, asks, bids))
   }
 
-  def receive = producerBehavior orElse {
+  def receive = periodicBehavior orElse producerBehavior orElse {
     case "tick" =>
       request("/v1/pubticker/btcusd")
         .via(tickFlow)

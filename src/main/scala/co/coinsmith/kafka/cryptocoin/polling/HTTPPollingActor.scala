@@ -10,10 +10,7 @@ import akka.http.scaladsl.Http.HostConnectionPool
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, ResponseEntity}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
-import co.coinsmith.kafka.cryptocoin.producer.Producer
 import org.json4s.DefaultFormats
-import org.json4s.JsonAST.JValue
-import org.json4s.jackson.JsonMethods._
 
 
 abstract class HTTPPollingActor extends Actor with ActorLogging {
@@ -22,8 +19,6 @@ abstract class HTTPPollingActor extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
   implicit val materializer = ActorMaterializer()
   import context.dispatcher
-  val tick = context.system.scheduler.schedule(2 seconds, 30 seconds, self, "tick")
-  val orderbook = context.system.scheduler.schedule(2 seconds, 30 seconds, self, "orderbook")
 
   val responseFlow = Flow[(Try[HttpResponse], String)].map {
     case (Success(HttpResponse(statusCode, _, entity, _)), _) =>
@@ -45,4 +40,10 @@ abstract class HTTPPollingActor extends Actor with ActorLogging {
     Source.single(HttpRequest(uri = uri) -> "")
       .via(pool)
       .via(responseFlow)
+
+  val periodicBehavior : Receive = {
+    case "start" =>
+      context.system.scheduler.schedule(2 seconds, 30 seconds, self, "tick")
+      context.system.scheduler.schedule(2 seconds, 30 seconds, self, "orderbook")
+  }
 }

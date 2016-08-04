@@ -19,8 +19,6 @@ class BitstampPollingActorSpec
 
   val actorRef = TestActorRef[BitstampPollingActor]
   val actor = actorRef.underlyingActor
-  actor.tick.cancel
-  actor.orderbook.cancel
 
   "BitstampPollingActor" should "process a ticker message" in {
     val timeCollected = Instant.ofEpochSecond(10L)

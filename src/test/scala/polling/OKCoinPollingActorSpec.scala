@@ -17,8 +17,6 @@ class OKCoinPollingActorSpec
 
   val actorRef = TestActorRef[OKCoinPollingActor]
   val actor = actorRef.underlyingActor
-  actor.tick.cancel
-  actor.orderbook.cancel
 
   "OKCoinPollingActor" should "process a ticker message" in {
     val timeCollected = Instant.ofEpochSecond(10L)
