@@ -12,9 +12,4 @@ class HTTPPollingActorSpec(_system: ActorSystem) extends TestKit(_system)
   override def afterAll {
     TestKit.shutdownActorSystem(system)
   }
-
-  def fixture(file: String): String = {
-    import scala.io.Source
-    Source.fromURL(getClass.getResource("/data/" + file)).mkString.stripLineEnd
-  }
 }
