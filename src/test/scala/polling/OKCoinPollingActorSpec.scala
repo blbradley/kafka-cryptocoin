@@ -5,7 +5,6 @@ import java.time.Instant
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Source
 import akka.testkit.TestActorRef
 import akka.util.ByteString
 import co.coinsmith.kafka.cryptocoin.polling.OKCoinPollingActor
@@ -72,7 +71,7 @@ class OKCoinPollingActorSpec
         List(2906.76, 0.01),
         List(2906.75, 0.082)
       ))
-    
+
     val (pub, sub) = testExchangeFlowPubSub(actor.orderbookFlow).run()
     pub.sendNext((timeCollected, entity))
     sub.requestNext(("orderbook", expected))

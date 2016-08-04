@@ -29,8 +29,8 @@ class OKCoinPollingActor extends HTTPPollingActor with ProducerBehavior {
     ("ticks", times merge ticker)
   }
 
-  val orderbookFlow = Flow[(Instant, ResponseEntity)].map { t =>
-    val json = render("time_collected" -> t._1.toString) merge parse(responseEntityToString(t._2))
+  val orderbookFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
+    val json = render("time_collected" -> t.toString) merge parse(responseEntityToString(entity), true)
     ("orderbook", json)
   }
 
