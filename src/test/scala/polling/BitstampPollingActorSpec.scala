@@ -2,13 +2,16 @@ package polling
 
 import java.time.Instant
 
+import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, ResponseEntity}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Flow, Keep, Source}
+import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
 import akka.util.ByteString
 import co.coinsmith.kafka.cryptocoin.polling.BitstampPollingActor
+import org.json4s.JsonAST.{JNothing, JValue}
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
@@ -45,14 +48,10 @@ class BitstampPollingActorSpec
       ("ask" -> 415.24) ~
       ("open" -> 415.43) ~
       ("time_collected" -> "1970-01-01T00:00:10Z")
-    withRunningKafka {
-      Source.single((timeCollected, entity))
-        .via(actor.tickFlow)
-        .runWith(actor.selfSink)
-      val msg = consumeFirstStringMessageFrom("bitstamp.polling.btcusd.ticks")
-      val result = parse(msg, true)
-      assert(result == expected)
-    }
+
+    val (pub, sub) = testExchangeFlowPubSub(actor.tickFlow).run()
+    pub.sendNext((timeCollected, entity))
+    sub.requestNext(("ticks", expected))
   }
 
   it should "process an orderbook message" in {
@@ -76,17 +75,13 @@ class BitstampPollingActorSpec
       ("time_collected" -> "1970-01-01T00:00:10Z") ~
       ("ask_prices" -> List(BigDecimal("462.50"), BigDecimal("462.51"), BigDecimal("462.88"))) ~
       ("ask_volumes" -> List(BigDecimal("9.12686646"), BigDecimal("0.05981955"), BigDecimal("1.00000000"))) ~
-      ("ask_timestamps" -> List[BigDecimal]()) ~
+      ("ask_timestamps" -> List(JNothing, JNothing, JNothing)) ~
       ("bid_prices" -> List(BigDecimal("462.49"), BigDecimal("462.48"), BigDecimal("462.47"))) ~
       ("bid_volumes" -> List(BigDecimal("0.03010000"), BigDecimal("4.03000000"), BigDecimal("16.49799877"))) ~
-      ("bid_timestamps" -> List[BigDecimal]())
-    withRunningKafka {
-      Source.single((timeCollected, entity))
-        .via(actor.orderbookFlow)
-        .runWith(actor.selfSink)
-      val msg = consumeFirstStringMessageFrom("bitstamp.polling.btcusd.orderbook")
-      val result = parse(msg, true)
-      assert(result == expected)
-    }
+      ("bid_timestamps" -> List(JNothing, JNothing, JNothing))
+
+    val (pub, sub) = testExchangeFlowPubSub(actor.orderbookFlow).run()
+    pub.sendNext((timeCollected, entity))
+    sub.requestNext(("orderbook", expected))
   }
 }

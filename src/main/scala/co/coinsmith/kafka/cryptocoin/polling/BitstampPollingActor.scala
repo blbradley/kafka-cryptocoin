@@ -19,6 +19,7 @@ class BitstampPollingActor extends HTTPPollingActor with ProducerBehavior {
   val tickFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
     val json = parse(responseEntityToString(entity)).transformField {
       case JField("timestamp", JString(t)) => JField("timestamp", JString(Instant.ofEpochSecond(t.toLong).toString))
+      case JField("open", JDouble(open)) => JField("open", BigDecimal(open))
       case JField(key, JString(value)) => JField(key, JDecimal(BigDecimal(value)))
     } merge render("time_collected" -> t.toString)
     ("ticks", json)

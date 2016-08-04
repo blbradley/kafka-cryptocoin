@@ -9,6 +9,7 @@ import akka.stream.scaladsl.Source
 import akka.testkit.TestActorRef
 import akka.util.ByteString
 import co.coinsmith.kafka.cryptocoin.polling.BitfinexPollingActor
+import org.json4s.JsonAST.JNothing
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
@@ -43,14 +44,10 @@ class BitfinexPollingActorSpec
       ("volume" -> 26373.95835286) ~
       ("timestamp" -> "2016-04-25T18:19:14.095383854Z") ~
       ("time_collected" -> timeCollected.toString)
-    withRunningKafka {
-      Source.single((timeCollected, entity))
-        .via(actor.tickFlow)
-        .runWith(actor.selfSink)
-      val msg = consumeFirstStringMessageFrom("bitfinex.polling.btcusd.ticks")
-      val result = parse(msg, true)
-      assert(result == expected)
-    }
+
+    val (pub, sub) = testExchangeFlowPubSub(actor.tickFlow).run()
+    pub.sendNext((timeCollected, entity))
+    sub.requestNext(("ticks", expected))
   }
 
   it should "process an orderbook message" in {
@@ -68,20 +65,17 @@ class BitfinexPollingActorSpec
     val data = ByteString(compact(render(json)))
     val entity = HttpEntity.Default(contentType, data.length, Source.single(data))
 
-    val expected = ("time_collected" -> timeCollected.toString) ~
+    val expected = ("timestamp" -> JNothing) ~
+      ("time_collected" -> timeCollected.toString) ~
       ("ask_prices" -> List(464.12, 464.49, 464.63)) ~
       ("ask_volumes" -> List(1.457, 4.07481358, 4.07481358)) ~
       ("ask_timestamps" -> List(1461607308.0, 1461607942.0, 1461607944.0)) ~
       ("bid_prices" -> List(464.11, 463.87, 463.86)) ~
       ("bid_volumes" -> List(43.98077206, 21.3389, 12.5686)) ~
       ("bid_timestamps" -> List(1461607939.0, 1461607927.0, 1461607887.0))
-    withRunningKafka {
-      Source.single((timeCollected, entity))
-        .via(actor.orderbookFlow)
-        .runWith(actor.selfSink)
-      val msg = consumeFirstStringMessageFrom("bitfinex.polling.btcusd.orderbook")
-      val result = parse(msg, true)
-      assert(result == expected)
-    }
+
+    val (pub, sub) = testExchangeFlowPubSub(actor.orderbookFlow).run()
+    pub.sendNext((timeCollected, entity))
+    sub.requestNext(("orderbook", expected))
   }
 }
