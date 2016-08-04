@@ -34,7 +34,7 @@ class OKCoinPollingActor extends HTTPPollingActor with ProducerBehavior {
     ("orderbook", json)
   }
 
-  def receive = producerBehavior orElse {
+  def receive = periodicBehavior orElse producerBehavior orElse {
     case "tick" =>
       request("/api/v1/ticker.do?symbol=btc_cny")
         .via(tickFlow)

@@ -37,7 +37,7 @@ class BitstampPollingActor extends HTTPPollingActor with ProducerBehavior {
     ("orderbook", orderbook)
   }
 
-  def receive = producerBehavior orElse {
+  def receive = periodicBehavior orElse producerBehavior orElse {
     case "tick" =>
       request("/api/ticker/")
         .via(tickFlow)
