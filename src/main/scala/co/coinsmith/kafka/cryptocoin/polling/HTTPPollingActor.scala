@@ -5,7 +5,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 import java.time.Instant
 
-import akka.actor.{Actor, ActorLogging, Cancellable}
+import akka.actor.{Actor, ActorLogging}
 import akka.http.scaladsl.Http.HostConnectionPool
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, ResponseEntity}
 import akka.stream.ActorMaterializer
