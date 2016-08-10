@@ -2,63 +2,16 @@ package co.coinsmith.kafka.cryptocoin.streaming
 
 import java.net.URI
 import java.time._
-import javax.websocket.MessageHandler.Whole
-import javax.websocket.{ClientEndpointConfig, Endpoint, EndpointConfig, Session}
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, Props}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
-import org.glassfish.tyrus.client.ClientManager
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
+
 case class Data(timeCollected: Instant, channel: String, data: JValue)
-
-class OKCoinWebsocket extends Actor with ActorLogging {
-  var receiver : ActorRef = _
-
-  val uri = new URI("wss://real.okcoin.cn:10440/websocket/okcoinapi")
-
-  val channels = List(
-    ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_ticker"),
-    ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_depth_60"),
-    ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_trades")
-  )
-  val msg = compact(render(channels))
-
-  val cec = ClientEndpointConfig.Builder.create().build
-  val client = ClientManager.createClient
-  val endpoint = new Endpoint {
-    override def onOpen(session: Session, config: EndpointConfig) = {
-      try {
-        // setup message handler and subscribe to channels
-        session.addMessageHandler(new Whole[String] {
-          override def onMessage(message: String) {
-            val timeCollected = Instant.now
-            log.debug("Received message {} at time {}", message, timeCollected.toString)
-            receiver ! (timeCollected, parse(message))
-          }
-        })
-
-        session.getBasicRemote.sendText(msg)
-        log.debug("Sent initialization message: {}", msg)
-      } catch {
-        case ex: Exception => throw ex
-      }
-    }
-  }
-
-  def connect = {
-    client.connectToServer(endpoint, cec, uri)
-    log.info("Websocket connected.")
-  }
-
-  def receive = {
-    case actor: ActorRef => receiver = actor
-    case Connect => connect
-  }
-}
 
 class OKCoinWebsocketProtocol extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
@@ -123,15 +76,25 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
   }
 }
 
-class OKCoinStreamingActor extends Actor with ProducerBehavior {
+class OKCoinStreamingActor extends Actor with ActorLogging with ProducerBehavior {
   val topicPrefix = "okcoin.streaming.btcusd."
+  val uri = new URI("wss://real.okcoin.cn:10440/websocket/okcoinapi")
 
-  val websocket = context.actorOf(Props[OKCoinWebsocket])
+  val websocket = context.actorOf(WebsocketActor.props(uri))
   val protocol = context.actorOf(Props[OKCoinWebsocketProtocol])
+
+  val channels = List(
+    ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_ticker"),
+    ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_depth_60"),
+    ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_trades")
+  )
+  val initMessage = compact(render(channels))
 
   override def preStart = {
     websocket ! self
     websocket ! Connect
+    websocket ! initMessage
+    log.debug("Sent initialization message: {}", initMessage)
   }
 
   def receive = producerBehavior orElse {
