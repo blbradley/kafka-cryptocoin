@@ -24,7 +24,7 @@ class BitstampStreamingActor extends Actor with ActorLogging with ProducerBehavi
     override def onConnectionStateChange(change: ConnectionStateChange) = {
       log.info("State changed from " + change.getPreviousState + " to " + change.getCurrentState)
       change.getCurrentState match {
-        case ConnectionState.DISCONNECTED => self ! "connect"
+        case ConnectionState.DISCONNECTED => self ! Connect
         case _ =>
       }
     }
