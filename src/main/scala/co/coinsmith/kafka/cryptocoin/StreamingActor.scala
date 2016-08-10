@@ -9,9 +9,8 @@ class StreamingActor extends Actor {
   val bitstamp = context.actorOf(Props[BitstampStreamingActor], "bitstamp")
   val okcoin = context.actorOf(Props[OKCoinStreamingActor], "okcoin")
 
-  bitfinex ! Connect
+  // Pusher still requires Connect message
   bitstamp ! Connect
-  okcoin ! Connect
 
   def receive = {
     case _ =>

@@ -3,17 +3,17 @@ package streaming
 import java.time.Instant
 
 import akka.actor.ActorSystem
-import akka.testkit.TestActorRef
-import co.coinsmith.kafka.cryptocoin.streaming.{Data, OKCoinStreamingActor}
+import akka.testkit.{ImplicitSender, TestActorRef}
+import co.coinsmith.kafka.cryptocoin.streaming.{Data, OKCoinWebsocketProtocol}
 import org.json4s.JsonAST.JArray
 import org.json4s.JsonDSL.WithBigDecimal._
-import org.json4s.jackson.JsonMethods._
 
 
-class OKCoinStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("OKCoinStreamingActorSpecSystem")) {
-  val actorRef = TestActorRef[OKCoinStreamingActor]
+class OKCoinWebsocketProtocolSpec extends ExchangeStreamingActorSpec(ActorSystem("OKCoinWebsocketProtocolSpecSystem"))
+  with ImplicitSender {
+  val actorRef = TestActorRef[OKCoinWebsocketProtocol]
 
-  "OKCoinStreamingActor" should "process a ticker message" in {
+  "OKCoinWebsocketProtocol" should "process a ticker message" in {
     val timeCollected = Instant.ofEpochSecond(10L)
     val json = ("buy" -> 2984.41) ~
       ("high" -> 3004.07) ~
@@ -31,12 +31,8 @@ class OKCoinStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("O
       ("timestamp" -> "2016-05-16T18:21:33.398Z") ~
       ("volume" -> 639976.04) ~
       ("time_collected" -> "1970-01-01T00:00:10Z")
-    withRunningKafka {
-      actorRef ! data
-      val msg = consumeFirstStringMessageFrom("okcoin.streaming.btcusd.ticks")
-      val result = parse(msg, true)
-      assert(result == expected)
-    }
+    actorRef ! data
+    expectMsg(("ticks", expected))
   }
 
   it should "process an orderbook message" in {
@@ -70,12 +66,8 @@ class OKCoinStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("O
       ("asks" -> asksDecimal) ~
       ("timestamp" -> timestamp.toString)
 
-    withRunningKafka {
-      actorRef ! data
-      val msg = consumeFirstStringMessageFrom("okcoin.streaming.btcusd.orderbook")
-      val result = parse(msg, true)
-      assert(result == expected)
-    }
+    actorRef ! data
+    expectMsg(("orderbook", expected))
   }
 
   it should "process a trade message" in {
@@ -90,17 +82,15 @@ class OKCoinStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("O
       "ask"
     ))
     val data = Data(timeCollected, "ok_sub_spotcny_btc_trades", json)
+
     val expected = ("timestamp" -> "2016-05-24T19:15:24Z") ~
       ("time_collected" -> "2016-05-24T19:15:26Z") ~
         ("id" -> 2949439265L) ~
         ("price" -> 2968.55) ~
         ("volume" -> 0.02) ~
         ("type" -> "ask")
-    withRunningKafka {
-      actorRef ! data
-      val msg = consumeFirstStringMessageFrom("okcoin.streaming.btcusd.trades")
-      val result = parse(msg, true)
-      assert(result == expected)
-    }
+
+    actorRef ! data
+    expectMsg(("trades", expected))
   }
 }
