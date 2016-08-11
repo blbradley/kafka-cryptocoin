@@ -25,9 +25,10 @@ class BitstampPollingActorSpec
 
   "BitstampPollingActor" should "process a ticker message" in {
     val timeCollected = Instant.ofEpochSecond(10L)
+    val timestamp = Instant.ofEpochSecond(1459297128)
     val json = ("high" ->  "424.37") ~
       ("last" -> "415.24") ~
-      ("timestamp" -> "1459297128") ~
+      ("timestamp" -> timestamp.getEpochSecond.toString) ~
       ("bid" -> "414.34") ~
       ("vwap" -> "415.41") ~
       ("volume" -> "5961.02582305") ~
@@ -38,15 +39,9 @@ class BitstampPollingActorSpec
     val data = ByteString(compact(render(json)))
     val entity = HttpEntity.Strict(contentType, data)
 
-    val expected = BitstampPollingTick("424.37",
-      "415.24",
-      "1459297128",
-      "414.34",
-      "415.41",
-      "5961.02582305",
-      "407.22",
-      "415.24",
-      415.43)
+    val expected = Tick("415.24", "414.34", "415.24",
+                        "424.37", "407.22", Some("415.43"),
+                        "5961.02582305", Some("415.41"), timestamp)
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
       .via(actor.tickFlow)

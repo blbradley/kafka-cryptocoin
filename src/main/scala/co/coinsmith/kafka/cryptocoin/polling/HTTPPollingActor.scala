@@ -44,6 +44,6 @@ abstract class HTTPPollingActor extends Actor with ActorLogging {
   val periodicBehavior : Receive = {
     case "start" =>
       context.system.scheduler.schedule(2 seconds, 30 seconds, self, "tick")
-//      context.system.scheduler.schedule(2 seconds, 30 seconds, self, "orderbook")
+      context.system.scheduler.schedule(2 seconds, 30 seconds, self, "orderbook")
   }
 }

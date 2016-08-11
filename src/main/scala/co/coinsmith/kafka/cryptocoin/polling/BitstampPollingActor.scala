@@ -6,9 +6,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ResponseEntity
 import akka.stream.scaladsl.Flow
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
-import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick, Utils}
-import org.json4s.JsonAST._
-import org.json4s.JsonDSL.WithBigDecimal._
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
 import org.json4s.jackson.JsonMethods._
 
 case class BitstampPollingTick(
@@ -24,17 +22,9 @@ case class BitstampPollingTick(
 )
 object BitstampPollingTick {
   implicit def toTick(tick: BitstampPollingTick) =
-    Tick(
-      BigDecimal(tick.last),
-      BigDecimal(tick.bid),
-      BigDecimal(tick.ask),
-      BigDecimal(tick.high),
-      BigDecimal(tick.low),
-      BigDecimal(tick.vwap),
-      BigDecimal(tick.volume),
-      BigDecimal(tick.open),
-      Instant.ofEpochSecond(tick.timestamp.toLong).toString
-    )
+    Tick(tick.last, tick.bid, tick.ask,
+      tick.high, tick.low, Some(tick.open.toString),
+      tick.volume, Some(tick.vwap), Instant.ofEpochSecond(tick.timestamp.toLong))
 }
 
 case class BitstampPollingOrderBook(
@@ -43,11 +33,14 @@ case class BitstampPollingOrderBook(
   asks: List[List[String]]
 )
 object BitstampPollingOrderBook {
-  implicit def toOrderBook(ob: BitstampPollingOrderBook) = {
-    val bids = ob.bids map { o => Order(BigDecimal(o(0)), BigDecimal(o(1)))}
-    val asks = ob.asks map { o => Order(BigDecimal(o(0)), BigDecimal(o(1)))}
-    OrderBook(bids, asks, Some(Instant.ofEpochSecond(ob.timestamp.toLong)))
-  }
+  val toOrder = { o: List[String] => Order(o(0), o(1)) }
+
+  implicit def toOrderBook(ob: BitstampPollingOrderBook) =
+    OrderBook(
+      ob.bids map toOrder,
+      ob.asks map toOrder,
+      Some(Instant.ofEpochSecond(ob.timestamp.toLong))
+    )
 }
 
 class BitstampPollingActor extends HTTPPollingActor with ProducerBehavior {
