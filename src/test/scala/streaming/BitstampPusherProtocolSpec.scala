@@ -3,18 +3,14 @@ package streaming
 import java.time.Instant
 
 import akka.actor.ActorSystem
-import akka.testkit.{TestActorRef, TestKit}
-import co.coinsmith.kafka.cryptocoin.streaming.BitstampStreamingActor
-import net.manub.embeddedkafka.EmbeddedKafka
-import org.json4s.JsonAST.{JDecimal, JInt}
+import akka.testkit.TestActorRef
+import co.coinsmith.kafka.cryptocoin.streaming.BitstampPusherProtocol
 import org.json4s.JsonDSL.WithBigDecimal._
-import org.json4s.jackson.JsonMethods._
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike}
 
-class BitstampStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem("BitstampStreamingActorSpecSystem")) {
-  val actorRef = TestActorRef[BitstampStreamingActor]
+class BitstampPusherProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem("BitstampPusherProtocolSpecSystem")) {
+  val actorRef = TestActorRef[BitstampPusherProtocol]
 
-  "BitstampStreamingActor" should "process a trade message" in {
+  "BitstampPusherProtocol" should "process a trade message" in {
     val timeCollected = Instant.ofEpochSecond(10L)
     val json = ("price" -> 451.78) ~
       ("timestamp" -> "1463025517") ~
@@ -27,12 +23,9 @@ class BitstampStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem(
       ("volume" -> 0.17786403) ~
       ("type" -> 1) ~
       ("id" -> 11151677)
-    withRunningKafka {
-      actorRef ! ("live_trades", "trade", timeCollected, json)
-      val msg = consumeFirstStringMessageFrom("bitstamp.streaming.btcusd.trades")
-      val result = parse(msg, true)
-      assert(result == expected)
-    }
+
+    actorRef ! ("live_trades", "trade", timeCollected, json)
+    expectMsg(("trades", expected))
   }
 
   it should "process an orderbook message" in {
@@ -63,12 +56,8 @@ class BitstampStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem(
       ("bids" -> bidsDecimal) ~
       ("asks" -> asksDecimal)
 
-    withRunningKafka {
-      actorRef ! ("order_book", "data", timeCollected, json)
-      val msg = consumeFirstStringMessageFrom("bitstamp.streaming.btcusd.orderbook")
-      val result = parse(msg, true)
-      assert(result == expected)
-    }
+    actorRef ! ("order_book", "data", timeCollected, json)
+    expectMsg(("orderbook", expected))
   }
 
   it should "process an orderbook diff message" in {
@@ -100,13 +89,8 @@ class BitstampStreamingActorSpec extends ExchangeStreamingActorSpec(ActorSystem(
       ("bids" -> bidsDecimal) ~
       ("asks" -> asksDecimal)
 
-    withRunningKafka {
-      actorRef ! ("diff_order_book", "data", timeCollected, json)
-      val msg = consumeFirstStringMessageFrom("bitstamp.streaming.btcusd.orderbook.updates")
-      val result = parse(msg, true) transform {
-        case JInt(v) => JDecimal(BigDecimal(v))
-      }
-      assert(result == expected)
-    }
+
+    actorRef ! ("diff_order_book", "data", timeCollected, json)
+    expectMsg(("orderbook.updates", expected))
   }
 }

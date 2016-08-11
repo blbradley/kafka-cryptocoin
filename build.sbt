@@ -15,8 +15,7 @@ libraryDependencies += "com.pusher" % "pusher-java-client" % "1.2.0"
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.6" % "test",
   "com.typesafe.akka" %% "akka-testkit" % "2.4.8" % "test",
-  "com.typesafe.akka" %% "akka-stream-testkit" % "2.4.8" % "test",
-  "net.manub" %% "scalatest-embedded-kafka" % "0.7.0" % "test"
+  "com.typesafe.akka" %% "akka-stream-testkit" % "2.4.8" % "test"
 )
 
 resolvers += "clojars.org" at "http://clojars.org/repo"
