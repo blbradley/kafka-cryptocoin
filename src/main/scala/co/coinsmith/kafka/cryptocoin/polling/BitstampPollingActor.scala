@@ -24,17 +24,7 @@ case class BitstampPollingTick(
 )
 object BitstampPollingTick {
   implicit def toTick(tick: BitstampPollingTick) =
-    Tick(
-      BigDecimal(tick.high),
-      BigDecimal(tick.last),
-      Instant.ofEpochSecond(tick.timestamp.toLong).toString,
-      BigDecimal(tick.bid),
-      BigDecimal(tick.vwap),
-      BigDecimal(tick.volume),
-      BigDecimal(tick.low),
-      BigDecimal(tick.ask),
-      BigDecimal(tick.open)
-    )
+    Tick(BigDecimal(tick.last), BigDecimal(tick.bid), BigDecimal(tick.ask), BigDecimal(tick.high), BigDecimal(tick.low), BigDecimal(tick.vwap), BigDecimal(tick.volume), BigDecimal(tick.open), Instant.ofEpochSecond(tick.timestamp.toLong).toString)
 }
 
 class BitstampPollingActor extends HTTPPollingActor with ProducerBehavior {

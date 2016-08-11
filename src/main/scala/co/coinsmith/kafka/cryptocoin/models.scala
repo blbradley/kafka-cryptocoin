@@ -4,15 +4,15 @@ import com.sksamuel.avro4s.RecordFormat
 
 
 case class Tick(
-  high: BigDecimal,
   last: BigDecimal,
-  timestamp: String,
   bid: BigDecimal,
+  ask: BigDecimal,
+  high: BigDecimal,
+  low: BigDecimal,
   vwap: BigDecimal,
   volume: BigDecimal,
-  low: BigDecimal,
-  ask: BigDecimal,
-  open: BigDecimal
+  open: BigDecimal,
+  timestamp: String
 )
 object Tick {
   val format = RecordFormat[Tick]
