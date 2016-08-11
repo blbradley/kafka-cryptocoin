@@ -5,9 +5,8 @@ import java.time.Instant
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ResponseEntity
 import akka.stream.scaladsl.Flow
-import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
-import org.json4s.JsonDSL.WithBigDecimal._
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
 import org.json4s.jackson.JsonMethods._
 
 case class OKCoinPollingTick(
@@ -22,9 +21,9 @@ case class OKCoinPollingDatedTick(date: String, ticker: OKCoinPollingTick)
 object OKCoinPollingDatedTick  {
   implicit def toTick(datedTick: OKCoinPollingDatedTick) = {
     val tick = datedTick.ticker
-    Tick(tick.last, tick.buy, tick.sell,
-      tick.high, tick.low, None,
-      tick.vol, None, Instant.ofEpochSecond(datedTick.date.toLong))
+    Tick(tick.last, tick.buy, tick.sell, Instant.ofEpochSecond(datedTick.date.toLong),
+      Some(tick.high), Some(tick.low), None,
+      Some(tick.vol), None)
   }
 }
 
