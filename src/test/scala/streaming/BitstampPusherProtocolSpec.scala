@@ -3,14 +3,14 @@ package streaming
 import java.time.Instant
 
 import akka.actor.ActorSystem
-import akka.testkit.{ImplicitSender, TestActorRef}
+import akka.testkit.TestActorRef
 import co.coinsmith.kafka.cryptocoin.streaming.BitstampPusherProtocol
 import org.json4s.JsonDSL.WithBigDecimal._
 
 class BitstampPusherProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem("BitstampPusherProtocolSpecSystem")) {
   val actorRef = TestActorRef[BitstampPusherProtocol]
 
-  "BitstampStreamingActor" should "process a trade message" in {
+  "BitstampPusherProtocol" should "process a trade message" in {
     val timeCollected = Instant.ofEpochSecond(10L)
     val json = ("price" -> 451.78) ~
       ("timestamp" -> "1463025517") ~

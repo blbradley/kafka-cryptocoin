@@ -3,7 +3,7 @@ package streaming
 import java.time.Instant
 
 import akka.actor.ActorSystem
-import akka.testkit.{ImplicitSender, TestActorRef}
+import akka.testkit.TestActorRef
 import co.coinsmith.kafka.cryptocoin.streaming.{Data, OKCoinWebsocketProtocol}
 import org.json4s.JsonAST.JArray
 import org.json4s.JsonDSL.WithBigDecimal._
