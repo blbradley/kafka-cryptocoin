@@ -14,6 +14,8 @@ trait ProducerBehavior {
     case (topic: String, json: JValue) =>
       val msg = compact(render(json))
       Producer.send(topicPrefix + topic, msg)
+    case (topic: String, obj: Object) =>
+      Producer.send(topicPrefix + topic, obj)
   }
 
 }

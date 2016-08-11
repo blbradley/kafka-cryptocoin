@@ -2,16 +2,16 @@ package polling
 
 import java.time.Instant
 
-import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, ResponseEntity}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Flow, Keep, Source}
+import akka.stream.scaladsl.{Keep, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
 import akka.util.ByteString
-import co.coinsmith.kafka.cryptocoin.polling.BitstampPollingActor
-import org.json4s.JsonAST.{JNothing, JValue}
+import co.coinsmith.kafka.cryptocoin.polling.{BitstampPollingActor, BitstampPollingTick, Tick}
+import org.apache.avro.generic.GenericRecord
+import org.json4s.JsonAST.JNothing
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
@@ -38,20 +38,22 @@ class BitstampPollingActorSpec
     val data = ByteString(compact(render(json)))
     val entity = HttpEntity.Strict(contentType, data)
 
-    val expected = ("high" -> 424.37) ~
-      ("last" -> 415.24) ~
-      ("timestamp" -> "2016-03-30T00:18:48Z") ~
-      ("bid" -> 414.34) ~
-      ("vwap" -> 415.41) ~
-      ("volume" -> 5961.02582305) ~
-      ("low" -> 407.22) ~
-      ("ask" -> 415.24) ~
-      ("open" -> 415.43) ~
-      ("time_collected" -> "1970-01-01T00:00:10Z")
+    val expected = BitstampPollingTick("424.37",
+      "415.24",
+      "1459297128",
+      "414.34",
+      "415.41",
+      "5961.02582305",
+      "407.22",
+      "415.24",
+      415.43)
 
-    val (pub, sub) = testExchangeFlowPubSub(actor.tickFlow).run()
+    val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
+      .via(actor.tickFlow)
+      .toMat(TestSink.probe[(String, GenericRecord)])(Keep.both)
+      .run
     pub.sendNext((timeCollected, entity))
-    sub.requestNext(("ticks", expected))
+    sub.requestNext(("ticks", Tick.format.to(expected)))
   }
 
   it should "process an orderbook message" in {
