@@ -7,15 +7,10 @@ import com.sksamuel.avro4s.RecordFormat
 
 
 case class Tick(last: BigDecimal, bid: BigDecimal, ask: BigDecimal, timestamp: Instant,
-                high: Option[BigDecimal], low: Option[BigDecimal], open: Option[BigDecimal],
-                volume: Option[BigDecimal], vwap: Option[BigDecimal])
+                high: Option[BigDecimal] = None, low: Option[BigDecimal] = None, open: Option[BigDecimal] = None,
+                volume: Option[BigDecimal] = None, vwap: Option[BigDecimal] = None)
 object Tick {
   val format = RecordFormat[Tick]
-
-  def apply(last: String, bid: String, ask: String, timestamp: Instant,
-            high: Option[String] = None, low: Option[String] = None, open: Option[String] = None,
-            volume: Option[String] = None, vwap: Option[String] = None) =
-    new Tick(BigDecimal(last), BigDecimal(bid), BigDecimal(ask), timestamp, high map { BigDecimal(_) }, low map { BigDecimal(_) }, open map { BigDecimal(_) }, volume map { BigDecimal(_) }, vwap map { BigDecimal(_) })
 }
 
 case class Order(price: BigDecimal, volume: BigDecimal, timestamp: Option[Instant] = None)
@@ -27,3 +22,5 @@ case class OrderBook(bids: List[Order], asks: List[Order], timestamp: Option[Ins
 object OrderBook {
   val format = RecordFormat[OrderBook]
 }
+
+

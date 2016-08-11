@@ -4,7 +4,7 @@ import java.time.Instant
 
 import akka.actor.ActorSystem
 import akka.testkit.TestActorRef
-import co.coinsmith.kafka.cryptocoin.{Order, OrderBook}
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
 import co.coinsmith.kafka.cryptocoin.streaming.{Data, OKCoinWebsocketProtocol}
 import org.json4s.JsonAST.JArray
 import org.json4s.JsonDSL.WithBigDecimal._
@@ -15,24 +15,21 @@ class OKCoinWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem(
 
   "OKCoinWebsocketProtocol" should "process a ticker message" in {
     val timeCollected = Instant.ofEpochSecond(10L)
-    val json = ("buy" -> 2984.41) ~
-      ("high" -> 3004.07) ~
+    val timestamp = 1463444493398L
+    val json = ("buy" -> "2984.41") ~
+      ("high" -> "3004.07") ~
       ("last" -> "2984.40") ~
-      ("low" -> 2981.0) ~
-      ("sell" -> 2984.42) ~
-      ("timestamp" -> "2016-05-16T18:21:33.398Z") ~
+      ("low" -> "2981.0") ~
+      ("sell" -> "2984.42") ~
+      ("timestamp" -> timestamp.toString) ~
       ("vol" -> "639,976.04")
     val data = Data(timeCollected, "ok_sub_spotcny_btc_ticker", json)
-    val expected = ("bid" -> 2984.41) ~
-      ("high" -> 3004.07) ~
-      ("last" -> 2984.40) ~
-      ("low" -> 2981.0) ~
-      ("ask" -> 2984.42) ~
-      ("timestamp" -> "2016-05-16T18:21:33.398Z") ~
-      ("volume" -> 639976.04) ~
-      ("time_collected" -> "1970-01-01T00:00:10Z")
+
+    val expected = Tick(2984.40, 2984.41, 2984.42, Instant.ofEpochMilli(timestamp),
+                        Some(3004.07), Some(2981.0), None, Some(639976.04))
+
     actorRef ! data
-    expectMsg(("ticks", expected))
+    expectMsg(("ticks", Tick.format.to(expected)))
   }
 
   it should "process an orderbook message" in {

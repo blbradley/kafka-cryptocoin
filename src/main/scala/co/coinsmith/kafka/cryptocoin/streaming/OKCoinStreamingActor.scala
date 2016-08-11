@@ -4,7 +4,7 @@ import java.net.URI
 import java.time._
 
 import akka.actor.{Actor, ActorLogging, Props}
-import co.coinsmith.kafka.cryptocoin.{Order, OrderBook}
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
@@ -13,6 +13,21 @@ import org.json4s.jackson.JsonMethods._
 
 
 case class Data(timeCollected: Instant, channel: String, data: JValue)
+
+case class OKCoinStreamingTick(buy: String, high: String, last: String, low: String, sell: String, timestamp: String, vol: String)
+object OKCoinStreamingTick {
+  implicit def toTick(tick: OKCoinStreamingTick) =
+    Tick(
+      tick.last.toDouble,
+      tick.buy.toDouble,
+      tick.sell.toDouble,
+      Instant.ofEpochMilli(tick.timestamp.toLong),
+      Some(tick.high.toDouble),
+      Some(tick.low.toDouble),
+      None,
+      Some(tick.vol.replace(",", "").toDouble)
+    )
+}
 
 case class OKCoinStreamingOrderBook(bids: List[List[Double]], asks: List[List[Double]], timestamp: String)
 object OKCoinStreamingOrderBook {
@@ -32,9 +47,7 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
   def receive = {
     case (t: Instant, events: JArray) =>
       // OKCoin websocket responses are an array of multiple events
-      events transformField {
-        case JField("timestamp", JString(t)) => ("timestamp" -> Instant.ofEpochMilli(t.toLong).toString)
-      } match {
+      events match {
         case JArray(arr) => arr.foreach { event => self forward (t, event) }
         case _ => new Exception("Message did not contain array.")
       }
@@ -51,13 +64,8 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
       self forward Data(t, channel, data)
 
     case Data(t, "ok_sub_spotcny_btc_ticker", data) =>
-      val json = data.transformField {
-        case JField("sell", v) => JField("ask", v)
-        case JField("buy", v) => JField("bid", v)
-        case JField("vol", JString(v)) => JField("volume", JDecimal(BigDecimal(v.replace(",", ""))))
-        case JField(key, JString(value)) if key != "timestamp" => JField(key, JDecimal(BigDecimal(value)))
-      } merge render("time_collected" -> t.toString)
-      sender ! ("ticks", json)
+      val tick = data.extract[OKCoinStreamingTick]
+      sender ! ("ticks", Tick.format.to(tick))
 
     case Data(t, "ok_sub_spotcny_btc_depth_60", data) =>
       val ob = data.extract[OKCoinStreamingOrderBook]

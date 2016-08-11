@@ -39,9 +39,9 @@ class BitstampPollingActorSpec
     val data = ByteString(compact(render(json)))
     val entity = HttpEntity.Strict(contentType, data)
 
-    val expected = Tick("415.24", "414.34", "415.24", timestamp,
-                        Some("424.37"), Some("407.22"), Some("415.43"),
-                        Some("5961.02582305"), Some("415.41"))
+    val expected = Tick(415.24, 414.34, 415.24, timestamp,
+                        Some(424.37), Some(407.22), Some(415.43),
+                        Some(5961.02582305), Some(415.41))
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
       .via(actor.tickFlow)
