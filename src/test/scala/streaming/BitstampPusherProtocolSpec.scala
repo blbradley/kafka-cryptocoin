@@ -7,8 +7,7 @@ import akka.testkit.{ImplicitSender, TestActorRef}
 import co.coinsmith.kafka.cryptocoin.streaming.BitstampPusherProtocol
 import org.json4s.JsonDSL.WithBigDecimal._
 
-class BitstampPusherProtocolSpec extends ExchangeStreamingActorSpec(ActorSystem("BitstampPusherProtocolSpecSystem"))
-  with ImplicitSender {
+class BitstampPusherProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem("BitstampPusherProtocolSpecSystem")) {
   val actorRef = TestActorRef[BitstampPusherProtocol]
 
   "BitstampStreamingActor" should "process a trade message" in {

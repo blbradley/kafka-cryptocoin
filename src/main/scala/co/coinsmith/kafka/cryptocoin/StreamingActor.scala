@@ -1,7 +1,7 @@
 package co.coinsmith.kafka.cryptocoin
 
 import akka.actor.{Actor, Props}
-import co.coinsmith.kafka.cryptocoin.streaming.{BitfinexStreamingActor, BitstampStreamingActor, Connect, OKCoinStreamingActor}
+import co.coinsmith.kafka.cryptocoin.streaming.{BitfinexStreamingActor, BitstampStreamingActor, OKCoinStreamingActor}
 
 
 class StreamingActor extends Actor {

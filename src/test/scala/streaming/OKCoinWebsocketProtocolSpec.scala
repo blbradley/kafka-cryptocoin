@@ -9,8 +9,7 @@ import org.json4s.JsonAST.JArray
 import org.json4s.JsonDSL.WithBigDecimal._
 
 
-class OKCoinWebsocketProtocolSpec extends ExchangeStreamingActorSpec(ActorSystem("OKCoinWebsocketProtocolSpecSystem"))
-  with ImplicitSender {
+class OKCoinWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem("OKCoinWebsocketProtocolSpecSystem")) {
   val actorRef = TestActorRef[OKCoinWebsocketProtocol]
 
   "OKCoinWebsocketProtocol" should "process a ticker message" in {
