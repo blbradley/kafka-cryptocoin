@@ -4,6 +4,7 @@ import java.net.URI
 import java.time._
 
 import akka.actor.{Actor, ActorLogging, Props}
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
@@ -12,6 +13,14 @@ import org.json4s.jackson.JsonMethods._
 
 
 case class Data(timeCollected: Instant, channel: String, data: JValue)
+
+case class OKCoinStreamingOrderBook(bids: List[List[Double]], asks: List[List[Double]], timestamp: String)
+object OKCoinStreamingOrderBook {
+  val toOrder = { o: List[Double] => Order(o(0), o(1)) }
+
+  implicit def toOrderBook(ob: OKCoinStreamingOrderBook) =
+    OrderBook(ob.bids map toOrder, ob.asks map toOrder, Some(Instant.ofEpochMilli(ob.timestamp.toLong)))
+}
 
 class OKCoinWebsocketProtocol extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
@@ -51,7 +60,8 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
       sender ! ("ticks", json)
 
     case Data(t, "ok_sub_spotcny_btc_depth_60", data) =>
-      sender ! ("orderbook", mergeInstant("time_collected", t, data))
+      val ob = data.extract[OKCoinStreamingOrderBook]
+      sender ! ("orderbook", OrderBook.format.to(ob))
 
     case Data(t, "ok_sub_spotcny_btc_trades", data: JArray) =>
       val json = data.transform {

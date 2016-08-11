@@ -4,6 +4,7 @@ import java.time.Instant
 
 import akka.actor.ActorSystem
 import akka.testkit.TestActorRef
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook}
 import co.coinsmith.kafka.cryptocoin.streaming.{Data, OKCoinWebsocketProtocol}
 import org.json4s.JsonAST.JArray
 import org.json4s.JsonDSL.WithBigDecimal._
@@ -36,37 +37,32 @@ class OKCoinWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem(
 
   it should "process an orderbook message" in {
     val timeCollected = Instant.ofEpochSecond(10L)
-    val bids = List(
+    val json = ("bids" -> List(
       List(3841.52, 0.372),
       List(3841.46, 0.548),
       List(3841.4, 0.812)
-    )
-    val asks = List(
+    )) ~ ("asks" -> List(
       List(3844.75, 0.04),
       List(3844.71, 5.181),
       List(3844.63, 3.143)
-    )
-    val timestamp = Instant.ofEpochMilli(1465496881515L)
-    val json = ("bids" -> bids) ~ ("asks" -> asks) ~ ("timestamp" -> timestamp.toString)
+    )) ~ ("timestamp" -> "1465496881515")
     val data = Data(timeCollected, "ok_sub_spotcny_btc_depth_60", json)
 
-    val bidsDecimal = List(
-      List(BigDecimal("3841.52"), BigDecimal("0.372")),
-      List(BigDecimal("3841.46"), BigDecimal("0.548")),
-      List(BigDecimal("3841.4"), BigDecimal("0.812"))
+    val bids = List(
+      Order(3841.52, 0.372),
+      Order(3841.46, 0.548),
+      Order(3841.4, 0.812)
     )
-    val asksDecimal = List(
-      List(BigDecimal("3844.75"), BigDecimal("0.04")),
-      List(BigDecimal("3844.71"), BigDecimal("5.181")),
-      List(BigDecimal("3844.63"), BigDecimal("3.143"))
+    val asks = List(
+      Order(3844.75, 0.04),
+      Order(3844.71, 5.181),
+      Order(3844.63, 3.143)
     )
-    val expected = ("time_collected" -> timeCollected.toString) ~
-      ("bids" -> bidsDecimal) ~
-      ("asks" -> asksDecimal) ~
-      ("timestamp" -> timestamp.toString)
+    val timestamp = Instant.ofEpochMilli(1465496881515L)
+    val expected = OrderBook(bids, asks, Some(timestamp))
 
     actorRef ! data
-    expectMsg(("orderbook", expected))
+    expectMsg(("orderbook", OrderBook.format.to(expected)))
   }
 
   it should "process a trade message" in {
