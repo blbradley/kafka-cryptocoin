@@ -6,27 +6,10 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ResponseEntity
 import akka.stream.scaladsl.Flow
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
-import co.coinsmith.kafka.cryptocoin.{Order, Utils}
-import com.sksamuel.avro4s.RecordFormat
+import co.coinsmith.kafka.cryptocoin.{Order, Tick, Utils}
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
-
-
-case class Tick(
-  high: BigDecimal,
-  last: BigDecimal,
-  timestamp: String,
-  bid: BigDecimal,
-  vwap: BigDecimal,
-  volume: BigDecimal,
-  low: BigDecimal,
-  ask: BigDecimal,
-  open: BigDecimal
-)
-object Tick {
-  val format = RecordFormat[Tick]
-}
 
 case class BitstampPollingTick(
   high: String,
