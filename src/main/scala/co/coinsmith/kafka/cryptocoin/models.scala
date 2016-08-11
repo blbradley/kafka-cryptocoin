@@ -1,6 +1,9 @@
 package co.coinsmith.kafka.cryptocoin
 
+import java.time.Instant
+
 import com.sksamuel.avro4s.RecordFormat
+import co.coinsmith.kafka.cryptocoin.avro.InstantTypeMaps._
 
 
 case class Tick(
@@ -19,3 +22,10 @@ object Tick {
 }
 
 case class Order(price: BigDecimal, volume: BigDecimal, timestamp: Option[BigDecimal] = None)
+object Order {
+  def apply(price: String, volume: String) = new Order(BigDecimal(price), BigDecimal(volume))
+}
+case class OrderBook(bids: List[Order], asks: List[Order], timestamp: Option[Instant])
+object OrderBook {
+  val format = RecordFormat[OrderBook]
+}
