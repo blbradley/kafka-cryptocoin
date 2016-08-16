@@ -4,8 +4,9 @@ import java.net.URI
 import java.time._
 
 import akka.actor.{Actor, ActorLogging, Props}
-import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick, Trade}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
+import com.sksamuel.avro4s.RecordFormat
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
@@ -40,9 +41,27 @@ object OKCoinStreamingOrderBook {
 class OKCoinWebsocketProtocol extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
 
-  def mergeInstant(key: String, t: Instant, json: JValue) = {
-    render(key -> t.toString) merge json
+  def adjustTimestamp(timeCollected: Instant, time: String) = {
+    val zone = ZoneId.of("Asia/Shanghai")
+    val collectedZoned = ZonedDateTime.ofInstant(timeCollected, ZoneOffset.UTC)
+      .withZoneSameInstant(zone)
+    var tradeZoned = LocalTime.parse(time).atDate(collectedZoned.toLocalDate).atZone(zone)
+    if ((tradeZoned compareTo collectedZoned) > 0) {
+      // correct date if time collected happens right after midnight
+      tradeZoned = tradeZoned minusDays 1
+    }
+
+    tradeZoned.withZoneSameInstant(ZoneOffset.UTC).toInstant
   }
+
+  def toTrade(trade: List[String])(implicit timeCollected: Instant) =
+    Trade(
+      trade(0).toLong,
+      trade(1).toDouble,
+      trade(2).toDouble,
+      adjustTimestamp(timeCollected, trade(3)),
+      trade(4)
+    )
 
   def receive = {
     case (t: Instant, events: JArray) =>
@@ -72,25 +91,11 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
       sender ! ("orderbook", OrderBook.format.to(ob))
 
     case Data(t, "ok_sub_spotcny_btc_trades", data: JArray) =>
-      val json = data.transform {
-        case JArray(JString(id) :: JString(p) :: JString(v) :: JString(time) :: JString(kind) :: Nil) =>
-          val zone = ZoneId.of("Asia/Shanghai")
-          val collectedZoned = ZonedDateTime.ofInstant(t, ZoneOffset.UTC)
-            .withZoneSameInstant(zone)
-          var tradeZoned = LocalTime.parse(time).atDate(collectedZoned.toLocalDate).atZone(zone)
-          if ((tradeZoned compareTo collectedZoned) > 0) {
-            // correct date if time collected happens right after midnight
-            tradeZoned = tradeZoned minusDays 1
-          }
-          val timestamp = tradeZoned.withZoneSameInstant(ZoneOffset.UTC)
-          ("timestamp" -> timestamp.toString) ~
-            ("time_collected" -> t.toString) ~
-            ("id" -> id.toLong) ~
-            ("price" -> BigDecimal(p)) ~
-            ("volume" -> BigDecimal(v)) ~
-            ("type" -> kind)
+      implicit val timeCollected = t
+      val trades = data.extract[List[List[String]]] map toTrade
+      trades foreach { trade =>
+        sender ! ("trades", Trade.format.to(trade))
       }
-      sender ! ("trades", json)
   }
 }
 

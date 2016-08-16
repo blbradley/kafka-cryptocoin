@@ -23,4 +23,7 @@ object OrderBook {
   val format = RecordFormat[OrderBook]
 }
 
-
+case class Trade(tid: Long, price: BigDecimal, volume: BigDecimal, timestamp: Instant, tpe: String)
+object Trade {
+  val format = RecordFormat[Trade]
+}
