@@ -16,8 +16,10 @@ object Tick {
   val format = RecordFormat[Tick]
 }
 
-case class Order(price: BigDecimal, volume: BigDecimal, timestamp: Option[Instant] = None)
+case class Order(price: BigDecimal, volume: BigDecimal, id: Option[Long] = None, timestamp: Option[Instant] = None)
 object Order {
+  val format = RecordFormat[Order]
+
   def apply(price: String, volume: String) = new Order(BigDecimal(price), BigDecimal(volume))
 }
 

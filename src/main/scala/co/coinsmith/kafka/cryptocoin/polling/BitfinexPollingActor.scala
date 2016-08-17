@@ -24,7 +24,7 @@ case class BitfinexPollingOrder(price: String, amount: String, timestamp: String
 case class BitfinexPollingOrderBook(bids: List[BitfinexPollingOrder], asks: List[BitfinexPollingOrder])
 object BitfinexPollingOrderBook {
   def toOrder(o: BitfinexPollingOrder) =
-    Order(BigDecimal(o.price), BigDecimal(o.amount), Some(Instant.ofEpochSecond(o.timestamp.toDouble.toLong)))
+    Order(BigDecimal(o.price), BigDecimal(o.amount), timestamp = Some(Instant.ofEpochSecond(o.timestamp.toDouble.toLong)))
 
   implicit def toOrderBook(ob: BitfinexPollingOrderBook) = OrderBook(ob.bids map toOrder, ob.asks map toOrder)
 }

@@ -65,14 +65,14 @@ class BitfinexPollingActorSpec
     val entity = HttpEntity.Default(contentType, data.length, Source.single(data))
 
     val bids = List(
-      Order(464.11, 43.98077206, Some(Instant.ofEpochSecond(1461607939L))),
-      Order(463.87, 21.3389, Some(Instant.ofEpochSecond(1461607927L))),
-      Order(463.86, 12.5686, Some(Instant.ofEpochSecond(1461607887L)))
+      Order(464.11, 43.98077206, timestamp = Some(Instant.ofEpochSecond(1461607939L))),
+      Order(463.87, 21.3389, timestamp = Some(Instant.ofEpochSecond(1461607927L))),
+      Order(463.86, 12.5686, timestamp = Some(Instant.ofEpochSecond(1461607887L)))
     )
     val asks = List(
-      Order(464.12, 1.457, Some(Instant.ofEpochSecond(1461607308L))),
-      Order(464.49, 4.07481358, Some(Instant.ofEpochSecond(1461607942L))),
-      Order(464.63, 4.07481358, Some(Instant.ofEpochSecond(1461607944L)))
+      Order(464.12, 1.457, timestamp = Some(Instant.ofEpochSecond(1461607308L))),
+      Order(464.49, 4.07481358, timestamp = Some(Instant.ofEpochSecond(1461607942L))),
+      Order(464.63, 4.07481358, timestamp = Some(Instant.ofEpochSecond(1461607944L)))
     )
     val expected = OrderBook(bids, asks)
 

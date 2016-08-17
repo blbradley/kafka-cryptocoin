@@ -4,7 +4,7 @@ import java.net.URI
 import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging, Props}
-import co.coinsmith.kafka.cryptocoin.Tick
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
@@ -28,12 +28,6 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
     }
   }
 
-  def processOrder(order: JValue) = {
-    ("id" -> order(0)) ~
-      ("price" -> order(1)) ~
-      ("volume" -> order(2))
-  }
-
   def isEvent(event: JValue): Boolean = event.findField {
     case ("event", eventName: JString) => true
     case _ => false
@@ -51,6 +45,8 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
       Some(arr(4)), Some(arr(5))
     )
 
+  def toOrder(order: List[Double]) = Order(order(1), order(2), Some(order(0).toLong))
+
   def receive = {
     case (t, JObject(JField("event", JString("subscribed")) ::
                      JField("channel", JString(channelName)) ::
@@ -64,25 +60,33 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
     case (t: Instant, JArray(JInt(channelId) :: JString("hb") :: Nil)) =>
       log.debug("Received heartbeat message for channel ID {}", channelId)
     case (t: Instant, JArray(JInt(channelId) :: JArray(data) :: Nil)) =>
-      val json = getChannelName(channelId) match {
-        case "book" => data map processOrder
-        case "trades" => data map { t =>
-          val seqOrId = t(0) match {
-            case seq: JString => ("seq" -> seq)
-            case id: JInt => ("id" -> id)
-            case _ => throw new Exception(s"Trade snapshot processing error for $t")
+      getChannelName(channelId) match {
+        case "book" =>
+          val orders = JArray(data).extract[List[List[Double]]] map toOrder
+          val ob = OrderBook(
+            orders filter { _.volume > 0 },
+            orders filter { _.volume < 0 }
+          )
+          sender ! ("orderbook.snapshots", OrderBook.format.to(ob))
+        case "trades" =>
+          val json = data map { t =>
+            val seqOrId = t(0) match {
+              case seq: JString => ("seq" -> seq)
+              case id: JInt => ("id" -> id)
+              case _ => throw new Exception(s"Trade snapshot processing error for $t")
+            }
+            seqOrId ~ ("timestamp" -> t(1)) ~ ("price" -> t(2)) ~ ("volume" -> t(3))
           }
-          seqOrId ~ ("timestamp" -> t(1)) ~ ("price" -> t(2)) ~ ("volume" -> t(3))
-        }
+          sender ! ("trades.snapshots", JArray(json))
         case _ => throw new Exception("Snapshot does not have nested array structure.")
       }
-      sender ! (topic(channelId, "snapshot"), JArray(json))
     case (t: Instant, JArray(JInt(channelId) :: JString(updateType) :: xs)) =>
       sender ! (topic(channelId, updateType), JArray(xs))
     case (t: Instant, JArray(JInt(channelId) :: xs)) =>
       getChannelName(channelId) match {
         case "book" =>
-          sender ! ("orderbook", JArray(xs))
+          val order = toOrder(JArray(xs).extract[List[Double]])
+          sender ! ("orderbook", Order.format.to(order))
         case "ticker" =>
           val tick = toTick(JArray(xs).extract[List[Double]])
           sender ! ("ticker", Tick.format.to(tick))
