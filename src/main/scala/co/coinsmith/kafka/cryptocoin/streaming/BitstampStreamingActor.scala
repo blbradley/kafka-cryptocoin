@@ -33,14 +33,19 @@ object BitstampStreamingTrade {
     )
 }
 
-case class BitstampStreamingOrderBook(bids: List[List[String]], asks: List[List[String]])
+case class BitstampStreamingOrderBook(
+  bids: List[List[String]],
+  asks: List[List[String]],
+  timestamp: Option[String]
+)
 object BitstampStreamingOrderBook {
   val toOrder = { o: List[String] => Order(o(0), o(1)) }
 
   implicit def toOrderBook(ob: BitstampStreamingOrderBook) =
     OrderBook(
       ob.bids map toOrder,
-      ob.asks map toOrder
+      ob.asks map toOrder,
+      ob.timestamp map { _.toLong } map Instant.ofEpochSecond
     )
 }
 
@@ -90,10 +95,6 @@ class BitstampPusherActor extends Actor with ActorLogging {
 class BitstampPusherProtocol extends Actor {
   implicit val formats = DefaultFormats
 
-  def mergeInstant(key: String, t: Instant, json: JValue) = {
-    render(key -> t.toString) merge json
-  }
-
   def receive =  {
     case ("live_trades", "trade", t: Instant, json: JValue) =>
       // some json processing required due to 'type' as a key name
@@ -106,13 +107,8 @@ class BitstampPusherProtocol extends Actor {
       val ob = json.extract[BitstampStreamingOrderBook]
       sender ! ("orderbook", OrderBook.format.to(ob))
     case ("diff_order_book", "data", t: Instant, json: JValue) =>
-      val diff = json transformField {
-        case ("timestamp", JString(t)) => ("timestamp", t.toLong)
-      } transform {
-        case JInt(t) => JString(Instant.ofEpochSecond(t.toLong).toString)
-        case JString(v) => JDecimal(BigDecimal(v))
-      }
-      sender ! ("orderbook.updates", mergeInstant("time_collected", t, diff))
+      val diff = json.extract[BitstampStreamingOrderBook]
+      sender ! ("orderbook.updates", OrderBook.format.to(diff))
   }
 }
 
