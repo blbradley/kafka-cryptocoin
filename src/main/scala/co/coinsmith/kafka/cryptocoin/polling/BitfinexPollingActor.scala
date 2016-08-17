@@ -15,12 +15,7 @@ case class BitfinexPollingTick(mid: String, bid: String, ask: String, last: Stri
 object BitfinexPollingTick {
   implicit def toTick(tick: BitfinexPollingTick) = {
     val Array(seconds, nanos) = tick.timestamp.split('.').map { _.toLong }
-    Tick(
-      tick.last.toDouble,
-      tick.bid.toDouble,
-      tick.ask.toDouble,
-      Instant.ofEpochSecond(seconds, nanos)
-    )
+    Tick(tick.last.toDouble, tick.bid.toDouble, tick.ask.toDouble, timestamp = Some(Instant.ofEpochSecond(seconds, nanos)))
   }
 }
 

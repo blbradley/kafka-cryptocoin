@@ -6,9 +6,12 @@ import co.coinsmith.kafka.cryptocoin.avro.InstantTypeMaps._
 import com.sksamuel.avro4s.RecordFormat
 
 
-case class Tick(last: BigDecimal, bid: BigDecimal, ask: BigDecimal, timestamp: Instant,
+case class Tick(last: BigDecimal, bid: BigDecimal, ask: BigDecimal,
                 high: Option[BigDecimal] = None, low: Option[BigDecimal] = None, open: Option[BigDecimal] = None,
-                volume: Option[BigDecimal] = None, vwap: Option[BigDecimal] = None)
+                volume: Option[BigDecimal] = None, vwap: Option[BigDecimal] = None,
+                bidVolume: Option[BigDecimal] = None, askVolume: Option[BigDecimal] = None,
+                lastDailyChange: Option[BigDecimal] = None, lastDailyChangePercent: Option[BigDecimal] = None,
+                timestamp: Option[Instant] = None)
 object Tick {
   val format = RecordFormat[Tick]
 }

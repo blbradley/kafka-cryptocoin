@@ -21,9 +21,7 @@ case class OKCoinPollingDatedTick(date: String, ticker: OKCoinPollingTick)
 object OKCoinPollingDatedTick  {
   implicit def toTick(datedTick: OKCoinPollingDatedTick) = {
     val tick = datedTick.ticker
-    Tick(tick.last.toDouble, tick.buy.toDouble, tick.sell.toDouble, Instant.ofEpochSecond(datedTick.date.toLong),
-      Some(tick.high.toDouble), Some(tick.low.toDouble), None,
-      Some(tick.vol.toDouble), None)
+    Tick(tick.last.toDouble, tick.buy.toDouble, tick.sell.toDouble, Some(tick.high.toDouble), Some(tick.low.toDouble), None, volume = Some(tick.vol.toDouble), vwap = None, timestamp = Some(Instant.ofEpochSecond(datedTick.date.toLong)))
   }
 }
 

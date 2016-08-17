@@ -4,13 +4,17 @@ import java.net.URI
 import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging, Props}
+import co.coinsmith.kafka.cryptocoin.Tick
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
+import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
 
 class BitfinexWebsocketProtocol extends Actor with ActorLogging {
+  implicit val formats = DefaultFormats
+
   var subscribed = Map.empty[BigInt, String]
   def getChannelName(channelId: BigInt) = subscribed(channelId)
   def topic(channelId: BigInt, updateType: String): String = {
@@ -37,6 +41,15 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
     case None => false
     case _ => true
   }
+
+  def toTick(arr: List[Double]) =
+    Tick(
+      arr(6), arr(0), arr(2),
+      Some(arr(8)), Some(arr(9)), None,
+      Some(arr(7)), None,
+      Some(arr(1)), Some(arr(3)),
+      Some(arr(4)), Some(arr(5))
+    )
 
   def receive = {
     case (t, JObject(JField("event", JString("subscribed")) ::
@@ -67,11 +80,13 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
     case (t: Instant, JArray(JInt(channelId) :: JString(updateType) :: xs)) =>
       sender ! (topic(channelId, updateType), JArray(xs))
     case (t: Instant, JArray(JInt(channelId) :: xs)) =>
-      val updateType = xs.length match {
-        case 3 => "update"
-        case 10 => "ticker"
+      getChannelName(channelId) match {
+        case "book" =>
+          sender ! ("orderbook", JArray(xs))
+        case "ticker" =>
+          val tick = toTick(JArray(xs).extract[List[Double]])
+          sender ! ("ticker", Tick.format.to(tick))
       }
-      sender ! (topic(channelId, updateType), JArray(xs))
     case m => throw new Exception(s"Unhandled message: $m")
   }
 }

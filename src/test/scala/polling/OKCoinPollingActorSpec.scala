@@ -37,9 +37,11 @@ class OKCoinPollingActorSpec
     val data = ByteString(compact(render(json)))
     val entity = HttpEntity.Strict(contentType, data)
 
-    val expected = Tick(2906.64, 2906.58, 2906.63, timestamp,
-                        Some(2915.0), Some(2885.6), None,
-                        Some(635178.4712))
+    val expected = Tick(
+      2906.64, 2906.58, 2906.63,
+      Some(2915.0), Some(2885.6), None, volume = Some(635178.4712),
+      timestamp = Some(timestamp)
+    )
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
       .via(actor.tickFlow)

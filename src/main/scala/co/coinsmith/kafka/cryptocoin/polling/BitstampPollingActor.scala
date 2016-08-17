@@ -22,9 +22,7 @@ case class BitstampPollingTick(
 )
 object BitstampPollingTick {
   implicit def toTick(tick: BitstampPollingTick) =
-    Tick(tick.last.toDouble, tick.bid.toDouble, tick.ask.toDouble, Instant.ofEpochSecond(tick.timestamp.toLong),
-      Some(tick.high.toDouble), Some(tick.low.toDouble), Some(tick.open),
-      Some(tick.volume.toDouble), Some(tick.vwap.toDouble))
+    Tick(tick.last.toDouble, tick.bid.toDouble, tick.ask.toDouble, Some(tick.high.toDouble), Some(tick.low.toDouble), Some(tick.open), volume = Some(tick.volume.toDouble), vwap = Some(tick.vwap.toDouble), timestamp = Some(Instant.ofEpochSecond(tick.timestamp.toLong)))
 }
 
 case class BitstampPollingOrderBook(

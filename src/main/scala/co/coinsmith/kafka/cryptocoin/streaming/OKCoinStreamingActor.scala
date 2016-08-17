@@ -15,19 +15,11 @@ import org.json4s.jackson.JsonMethods._
 
 case class Data(timeCollected: Instant, channel: String, data: JValue)
 
-case class OKCoinStreamingTick(buy: String, high: String, last: String, low: String, sell: String, timestamp: String, vol: String)
+case class OKCoinStreamingTick(buy: String, high: String, last: String, low: String,
+                               sell: String, timestamp: String, vol: String)
 object OKCoinStreamingTick {
   implicit def toTick(tick: OKCoinStreamingTick) =
-    Tick(
-      tick.last.toDouble,
-      tick.buy.toDouble,
-      tick.sell.toDouble,
-      Instant.ofEpochMilli(tick.timestamp.toLong),
-      Some(tick.high.toDouble),
-      Some(tick.low.toDouble),
-      None,
-      Some(tick.vol.replace(",", "").toDouble)
-    )
+    Tick(tick.last.toDouble, tick.buy.toDouble, tick.sell.toDouble, Some(tick.high.toDouble), Some(tick.low.toDouble), None, volume = Some(tick.vol.replace(",", "").toDouble), timestamp = Some(Instant.ofEpochMilli(tick.timestamp.toLong)))
 }
 
 case class OKCoinStreamingOrderBook(bids: List[List[Double]], asks: List[List[Double]], timestamp: String)

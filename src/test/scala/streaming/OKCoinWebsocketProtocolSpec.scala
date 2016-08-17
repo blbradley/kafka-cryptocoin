@@ -25,8 +25,12 @@ class OKCoinWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem(
       ("vol" -> "639,976.04")
     val data = Data(timeCollected, "ok_sub_spotcny_btc_ticker", json)
 
-    val expected = Tick(2984.40, 2984.41, 2984.42, Instant.ofEpochMilli(timestamp),
-                        Some(3004.07), Some(2981.0), None, Some(639976.04))
+    val expected = Tick(
+      2984.40, 2984.41, 2984.42,
+      Some(3004.07), Some(2981.0), None,
+      volume = Some(639976.04),
+      timestamp = Some(Instant.ofEpochMilli(timestamp))
+    )
 
     actorRef ! data
     expectMsg(("ticks", Tick.format.to(expected)))
