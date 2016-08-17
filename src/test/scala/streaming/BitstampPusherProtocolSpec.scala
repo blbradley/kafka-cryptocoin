@@ -4,6 +4,7 @@ import java.time.Instant
 
 import akka.actor.ActorSystem
 import akka.testkit.TestActorRef
+import co.coinsmith.kafka.cryptocoin.Trade
 import co.coinsmith.kafka.cryptocoin.streaming.BitstampPusherProtocol
 import org.json4s.JsonDSL.WithBigDecimal._
 
@@ -12,20 +13,20 @@ class BitstampPusherProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem("
 
   "BitstampPusherProtocol" should "process a trade message" in {
     val timeCollected = Instant.ofEpochSecond(10L)
-    val json = ("price" -> 451.78) ~
-      ("timestamp" -> "1463025517") ~
-      ("amount" -> 0.17786403) ~
-      ("type" -> 1) ~
-      ("id" -> 11151677)
-    val expected = ("time_collected" -> timeCollected.toString) ~
-      ("price" -> 451.78) ~
-      ("timestamp" -> "2016-05-12T03:58:37Z") ~
-      ("volume" -> 0.17786403) ~
-      ("type" -> 1) ~
-      ("id" -> 11151677)
+    val timestamp = 1471452789L
+    val json = ("buy_order_id" -> 146107417) ~
+      ("timestamp" -> timestamp.toString) ~
+      ("price" -> 567.0) ~
+      ("amount" -> 0.2) ~
+      ("sell_order_id" -> 146106449) ~
+      ("type" -> 0) ~
+      ("id" -> 11881674)
+    val expected = Trade(11881674, 567.0, 0.2,
+                         Instant.ofEpochSecond(timestamp), "bid",
+                         Some(146107417), Some(146106449))
 
     actorRef ! ("live_trades", "trade", timeCollected, json)
-    expectMsg(("trades", expected))
+    expectMsg(("trades", Trade.format.to(expected)))
   }
 
   it should "process an orderbook message" in {

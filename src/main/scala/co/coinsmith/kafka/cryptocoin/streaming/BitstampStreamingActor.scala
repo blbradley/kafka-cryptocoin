@@ -3,14 +3,37 @@ package co.coinsmith.kafka.cryptocoin.streaming
 import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import co.coinsmith.kafka.cryptocoin.Trade
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import com.pusher.client.Pusher
 import com.pusher.client.channel.ChannelEventListener
 import com.pusher.client.connection.{ConnectionEventListener, ConnectionState, ConnectionStateChange}
+import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
+
+case class BitstampStreamingTrade(id: Long, amount: Double, price: Double,
+                                  tpe: Int, timestamp: String,
+                                  buy_order_id: Long, sell_order_id: Long)
+object BitstampStreamingTrade {
+  implicit def toTrade(trade: BitstampStreamingTrade) =
+    Trade(
+      trade.id,
+      trade.price,
+      trade.amount,
+      Instant.ofEpochSecond(trade.timestamp.toLong),
+      trade.tpe match {
+        case 0 => "bid"
+        case 1 => "ask"
+      },
+      Some(trade.buy_order_id),
+      Some(trade.sell_order_id)
+    )
+}
+
+case class BitstampStreamingOrderBook()
 
 class BitstampPusherActor extends Actor with ActorLogging {
   var receiver: ActorRef = _
@@ -56,17 +79,20 @@ class BitstampPusherActor extends Actor with ActorLogging {
 }
 
 class BitstampPusherProtocol extends Actor {
+  implicit val formats = DefaultFormats
+
   def mergeInstant(key: String, t: Instant, json: JValue) = {
     render(key -> t.toString) merge json
   }
 
   def receive =  {
     case ("live_trades", "trade", t: Instant, json: JValue) =>
-      val trade = json transformField {
-        case ("timestamp", JString(t)) => ("timestamp", Instant.ofEpochSecond(t.toLong).toString)
-        case ("amount", v) => ("volume", v)
+      // some json processing required due to 'type' as a key name
+      val jsonWithoutTradeKey = json transformField {
+        case ("type", v) => ("tpe", v)
       }
-      sender ! ("trades", mergeInstant("time_collected", t, trade))
+      val trade = jsonWithoutTradeKey.extract[BitstampStreamingTrade]
+      sender ! ("trades", Trade.format.to(trade))
     case ("order_book", "data", t: Instant, json: JValue) =>
       val ob = json transform {
         case JString(v) => JDecimal(BigDecimal(v))
