@@ -98,10 +98,9 @@ class BitstampPusherProtocol extends Actor {
   def receive =  {
     case ("live_trades", "trade", t: Instant, json: JValue) =>
       // some json processing required due to 'type' as a key name
-      val jsonWithoutTradeKey = json transformField {
+      val trade = (json transformField{
         case ("type", v) => ("tpe", v)
-      }
-      val trade = jsonWithoutTradeKey.extract[BitstampStreamingTrade]
+      }).extract[BitstampStreamingTrade]
       sender ! ("trades", Trade.format.to(trade))
     case ("order_book", "data", t: Instant, json: JValue) =>
       val ob = json.extract[BitstampStreamingOrderBook]
