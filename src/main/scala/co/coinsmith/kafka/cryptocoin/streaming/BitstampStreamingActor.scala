@@ -3,7 +3,7 @@ package co.coinsmith.kafka.cryptocoin.streaming
 import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import co.coinsmith.kafka.cryptocoin.Trade
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Trade}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import com.pusher.client.Pusher
 import com.pusher.client.channel.ChannelEventListener
@@ -33,7 +33,16 @@ object BitstampStreamingTrade {
     )
 }
 
-case class BitstampStreamingOrderBook()
+case class BitstampStreamingOrderBook(bids: List[List[String]], asks: List[List[String]])
+object BitstampStreamingOrderBook {
+  val toOrder = { o: List[String] => Order(o(0), o(1)) }
+
+  implicit def toOrderBook(ob: BitstampStreamingOrderBook) =
+    OrderBook(
+      ob.bids map toOrder,
+      ob.asks map toOrder
+    )
+}
 
 class BitstampPusherActor extends Actor with ActorLogging {
   var receiver: ActorRef = _
@@ -94,10 +103,8 @@ class BitstampPusherProtocol extends Actor {
       val trade = jsonWithoutTradeKey.extract[BitstampStreamingTrade]
       sender ! ("trades", Trade.format.to(trade))
     case ("order_book", "data", t: Instant, json: JValue) =>
-      val ob = json transform {
-        case JString(v) => JDecimal(BigDecimal(v))
-      }
-      sender ! ("orderbook", mergeInstant("time_collected", t, ob))
+      val ob = json.extract[BitstampStreamingOrderBook]
+      sender ! ("orderbook", OrderBook.format.to(ob))
     case ("diff_order_book", "data", t: Instant, json: JValue) =>
       val diff = json transformField {
         case ("timestamp", JString(t)) => ("timestamp", t.toLong)

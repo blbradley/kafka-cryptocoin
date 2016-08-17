@@ -4,7 +4,7 @@ import java.time.Instant
 
 import akka.actor.ActorSystem
 import akka.testkit.TestActorRef
-import co.coinsmith.kafka.cryptocoin.Trade
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Trade}
 import co.coinsmith.kafka.cryptocoin.streaming.BitstampPusherProtocol
 import org.json4s.JsonDSL.WithBigDecimal._
 
@@ -30,35 +30,31 @@ class BitstampPusherProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem("
   }
 
   it should "process an orderbook message" in {
-    val bids = List(
+    val json = ("bids" -> List(
       List("452.50000000", "5.00000000"),
       List("452.07000000", "6.63710000"),
       List("452.00000000", "3.75000000")
-    )
-    val asks = List(
+    )) ~ ("asks" -> List(
       List("452.97000000", "12.10000000"),
       List("452.98000000", "6.58530000"),
       List("453.00000000", "12.54279453")
-    )
-    val json = ("bids" -> bids) ~ ("asks" -> asks)
+    ))
 
     val timeCollected = Instant.ofEpochSecond(10L)
-    val bidsDecimal = List(
-      List(BigDecimal("452.50000000"), BigDecimal("5.00000000")),
-      List(BigDecimal("452.07000000"), BigDecimal("6.63710000")),
-      List(BigDecimal("452.00000000"), BigDecimal("3.75000000"))
+    val bids = List(
+      Order("452.50000000", "5.00000000"),
+      Order("452.07000000", "6.63710000"),
+      Order("452.00000000", "3.75000000")
     )
-    val asksDecimal = List(
-      List(BigDecimal("452.97000000"), BigDecimal("12.10000000")),
-      List(BigDecimal("452.98000000"), BigDecimal("6.58530000")),
-      List(BigDecimal("453.00000000"), BigDecimal("12.54279453"))
+    val asks = List(
+      Order("452.97000000", "12.10000000"),
+      Order("452.98000000", "6.58530000"),
+      Order("453.00000000", "12.54279453")
     )
-    val expected = ("time_collected" -> timeCollected.toString) ~
-      ("bids" -> bidsDecimal) ~
-      ("asks" -> asksDecimal)
+    val expected = OrderBook(bids, asks)
 
     actorRef ! ("order_book", "data", timeCollected, json)
-    expectMsg(("orderbook", expected))
+    expectMsg(("orderbook", OrderBook.format.to(expected)))
   }
 
   it should "process an orderbook diff message" in {
