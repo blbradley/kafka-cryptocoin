@@ -20,17 +20,16 @@ case class BitstampStreamingTrade(id: Long, amount: Double, price: Double,
 object BitstampStreamingTrade {
   implicit def toTrade(trade: BitstampStreamingTrade) =
     Trade(
-      trade.id,
       trade.price,
       trade.amount,
       Instant.ofEpochSecond(trade.timestamp.toLong),
-      trade.tpe match {
+      Some(trade.tpe match {
         case 0 => "bid"
         case 1 => "ask"
-      },
+      }),
+      Some(trade.id),
       Some(trade.buy_order_id),
-      Some(trade.sell_order_id)
-    )
+      Some(trade.sell_order_id))
 }
 
 case class BitstampStreamingOrderBook(

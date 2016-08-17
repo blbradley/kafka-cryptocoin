@@ -21,9 +21,11 @@ class BitstampPusherProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem("
       ("sell_order_id" -> 146106449) ~
       ("type" -> 0) ~
       ("id" -> 11881674)
-    val expected = Trade(11881674, 567.0, 0.2,
-                         Instant.ofEpochSecond(timestamp), "bid",
-                         Some(146107417), Some(146106449))
+    val expected = Trade(
+      567.0, 0.2, Instant.ofEpochSecond(timestamp),
+      Some("bid"), Some(11881674),
+      Some(146107417), Some(146106449)
+    )
 
     actorRef ! ("live_trades", "trade", timeCollected, json)
     expectMsg(("trades", Trade.format.to(expected)))

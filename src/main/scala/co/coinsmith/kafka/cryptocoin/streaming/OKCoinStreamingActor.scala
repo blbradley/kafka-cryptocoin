@@ -48,11 +48,11 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
 
   def toTrade(trade: List[String])(implicit timeCollected: Instant) =
     Trade(
-      trade(0).toLong,
       trade(1).toDouble,
       trade(2).toDouble,
       adjustTimestamp(timeCollected, trade(3)),
-      trade(4)
+      Some(trade(4)),
+      Some(trade(0).toLong)
     )
 
   def receive = {

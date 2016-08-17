@@ -28,9 +28,10 @@ object OrderBook {
   val format = RecordFormat[OrderBook]
 }
 
-case class Trade(tid: Long, price: BigDecimal, volume: BigDecimal,
-                 timestamp: Instant, tpe: String,
-                 bidoid: Option[Long] = None, askoid: Option[Long] = None)
+case class Trade(price: BigDecimal, volume: BigDecimal, timestamp: Instant,
+                 tpe: Option[String] = None, tid: Option[Long] = None,
+                 bidoid: Option[Long] = None, askoid: Option[Long] = None,
+                 seq: Option[String] = None)
 object Trade {
   val format = RecordFormat[Trade]
 }

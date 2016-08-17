@@ -4,7 +4,7 @@ import java.net.URI
 import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging, Props}
-import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick, Trade}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
@@ -47,6 +47,16 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
 
   def toOrder(order: List[Double]) = Order(order(1), order(2), Some(order(0).toLong))
 
+  def toTrade(trade: JValue) = trade match {
+    case JArray(JString(seq) :: JInt(id) :: JInt(timestamp) :: JDouble(price) :: JDouble(volume) :: Nil) =>
+      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong),  tid = Some(id.toLong), seq = Some(seq))
+    case JArray(JString(seq) :: JInt(timestamp) :: JDouble(price) :: JDouble(volume) :: Nil) =>
+      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), seq = Some(seq))
+    case JArray(JInt(id) :: JInt(timestamp) :: JDouble(price) :: JDouble(volume) :: Nil) =>
+      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong),  tid = Some(id.toLong))
+    case _ => throw new Exception(s"Trade snapshot processing error for $trade")
+  }
+
   def receive = {
     case (t, JObject(JField("event", JString("subscribed")) ::
                      JField("channel", JString(channelName)) ::
@@ -68,20 +78,17 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
             orders filter { _.volume < 0 }
           )
           sender ! ("orderbook.snapshots", OrderBook.format.to(ob))
-        case "trades" =>
-          val json = data map { t =>
-            val seqOrId = t(0) match {
-              case seq: JString => ("seq" -> seq)
-              case id: JInt => ("id" -> id)
-              case _ => throw new Exception(s"Trade snapshot processing error for $t")
-            }
-            seqOrId ~ ("timestamp" -> t(1)) ~ ("price" -> t(2)) ~ ("volume" -> t(3))
-          }
-          sender ! ("trades.snapshots", JArray(json))
-        case _ => throw new Exception("Snapshot does not have nested array structure.")
+        case "trades" => data map toTrade foreach { trade =>
+          sender ! ("trades.snapshots", Trade.format.to(trade))
+        }
       }
     case (t: Instant, JArray(JInt(channelId) :: JString(updateType) :: xs)) =>
-      sender ! (topic(channelId, updateType), JArray(xs))
+      val topic = updateType match {
+        case "tu" => "trades"
+        case "te" => "trades.executions"
+      }
+      val trade = toTrade(JArray(xs))
+      sender ! (topic, Trade.format.to(trade))
     case (t: Instant, JArray(JInt(channelId) :: xs)) =>
       getChannelName(channelId) match {
         case "book" =>
