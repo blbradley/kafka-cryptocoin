@@ -10,23 +10,25 @@ Configuration
 -------------
 
 * `KAFKA_CRYPTOCOIN_BOOTSTRAP_SERVERS`: Comma separated list of Kafka brokers. Port is required.
+* `KAFKA_CRYPTOCOIN_SCHEMA_REGISTRY`: URL for Kafka Schema Registry
 
 
 Kafka
 -----
 
-You must have a running Kafka broker. This project depends on 0.8.2.2 but is likely to
-work with any version in the 0.8.2.x series. You can get it [here](http://kafka.apache.org/downloads.html).
-Use the [Quick Start](http://kafka.apache.org/082/documentation.html#quickstart) to run
-a broker locally for trying out this project.
+You must have a running Kafka broker and Kafka Schema Registry.
+These are part of [Confluent Platform 3.0](http://docs.confluent.io/3.0.0/index.html).
+You may go to the [Quickstart](http://docs.confluent.io/3.0.0/quickstart.html)
+to get them running locally for development.
 
 
 Usage
 -----
 
-Start a Kafka broker or set your own.
+Start the the required services. Then, run:
 
     export KAFKA_CRYPTOCOIN_BOOTSTRAP_SERVERS=localhost:9092
+    export KAFKA_CRYPTOCOIN_SCHEMA_REGISTRY=http://localhost:8081
     sbt run
 
 ###Running the tests
