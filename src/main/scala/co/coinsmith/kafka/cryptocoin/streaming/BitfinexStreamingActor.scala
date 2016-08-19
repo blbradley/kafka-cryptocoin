@@ -45,7 +45,8 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
       Some(arr(4)), Some(arr(5))
     )
 
-  def toOrder(order: List[Double]) = Order(order(1), order(2), Some(order(0).toLong))
+  def toOrder(order: List[Double])(implicit timeCollected: Instant) =
+    Order(order(1), order(2), Some(order(0).toLong), Some(timeCollected))
 
   def toTrade(trade: JValue)(implicit timeCollected: Instant) = trade match {
     case JArray(JString(seq) :: JInt(id) :: JInt(timestamp) :: JDouble(price) :: JDouble(volume) :: Nil) =>
