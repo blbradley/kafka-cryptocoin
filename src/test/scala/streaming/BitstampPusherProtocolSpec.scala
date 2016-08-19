@@ -22,7 +22,7 @@ class BitstampPusherProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem("
       ("type" -> 0) ~
       ("id" -> 11881674)
     val expected = Trade(
-      567.0, 0.2, Instant.ofEpochSecond(timestamp),
+      567.0, 0.2, Instant.ofEpochSecond(timestamp), timeCollected,
       Some("bid"), Some(11881674),
       Some(146107417), Some(146106449)
     )
@@ -53,7 +53,7 @@ class BitstampPusherProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem("
       Order("452.98000000", "6.58530000"),
       Order("453.00000000", "12.54279453")
     )
-    val expected = OrderBook(bids, asks)
+    val expected = OrderBook(bids, asks, None, Some(timeCollected))
 
     actorRef ! ("order_book", "data", timeCollected, json)
     expectMsg(("orderbook", OrderBook.format.to(expected)))
@@ -82,7 +82,7 @@ class BitstampPusherProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem("
       Order("453.68000000", "0.25324645"),
       Order("458.90000000", "0")
     )
-    val expected = OrderBook(bids, asks, Some(Instant.ofEpochSecond(timestamp)))
+    val expected = OrderBook(bids, asks, Some(Instant.ofEpochSecond(timestamp)), Some(timeCollected))
 
     actorRef ! ("diff_order_book", "data", timeCollected, json)
     expectMsg(("orderbook.updates", OrderBook.format.to(expected)))

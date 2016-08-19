@@ -26,7 +26,7 @@ class OKCoinWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem(
     val data = Data(timeCollected, "ok_sub_spotcny_btc_ticker", json)
 
     val expected = Tick(
-      2984.40, 2984.41, 2984.42,
+      2984.40, 2984.41, 2984.42, timeCollected,
       Some(3004.07), Some(2981.0), None,
       volume = Some(639976.04),
       timestamp = Some(Instant.ofEpochMilli(timestamp))
@@ -60,7 +60,7 @@ class OKCoinWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem(
       Order(3844.63, 3.143)
     )
     val timestamp = Instant.ofEpochMilli(1465496881515L)
-    val expected = OrderBook(bids, asks, Some(timestamp))
+    val expected = OrderBook(bids, asks, Some(timestamp), Some(timeCollected))
 
     actorRef ! data
     expectMsg(("orderbook", OrderBook.format.to(expected)))
@@ -80,7 +80,7 @@ class OKCoinWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem(
     val data = Data(timeCollected, "ok_sub_spotcny_btc_trades", JArray(List(json)))
 
     val timestamp = Instant.ofEpochSecond(1464117324L)
-    val expected = Trade(2968.55, 0.02, timestamp, Some("ask"), Some(2949439265L))
+    val expected = Trade(2968.55, 0.02, timestamp, timeCollected, Some("ask"), Some(2949439265L))
 
     actorRef ! data
     expectMsg(("trades", Trade.format.to(expected)))

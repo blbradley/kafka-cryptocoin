@@ -13,9 +13,12 @@ import org.json4s.jackson.JsonMethods._
 
 case class BitfinexPollingTick(mid: String, bid: String, ask: String, last: String, timestamp: String)
 object BitfinexPollingTick {
-  implicit def toTick(tick: BitfinexPollingTick) = {
+  implicit def toTick(tick: BitfinexPollingTick)(implicit timeCollected: Instant) = {
     val Array(seconds, nanos) = tick.timestamp.split('.').map { _.toLong }
-    Tick(tick.last.toDouble, tick.bid.toDouble, tick.ask.toDouble, timestamp = Some(Instant.ofEpochSecond(seconds, nanos)))
+    Tick(
+      tick.last.toDouble, tick.bid.toDouble, tick.ask.toDouble, timeCollected,
+      timestamp = Some(Instant.ofEpochSecond(seconds, nanos))
+    )
   }
 }
 
@@ -26,7 +29,12 @@ object BitfinexPollingOrderBook {
   def toOrder(o: BitfinexPollingOrder) =
     Order(BigDecimal(o.price), BigDecimal(o.amount), timestamp = Some(Instant.ofEpochSecond(o.timestamp.toDouble.toLong)))
 
-  implicit def toOrderBook(ob: BitfinexPollingOrderBook) = OrderBook(ob.bids map toOrder, ob.asks map toOrder)
+  implicit def toOrderBook(ob: BitfinexPollingOrderBook)(implicit timeCollected: Instant) =
+    OrderBook(
+      ob.bids map toOrder,
+      ob.asks map toOrder,
+      timeCollected = Some(timeCollected)
+    )
 }
 
 class BitfinexPollingActor extends HTTPPollingActor with ProducerBehavior {
@@ -34,6 +42,7 @@ class BitfinexPollingActor extends HTTPPollingActor with ProducerBehavior {
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("api.bitfinex.com")
 
   val tickFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
+    implicit val timeCollected = t
     val msg = parse(responseEntityToString(entity)) transformField {
       case JField("last_price", v) => JField("last", v)
     }
@@ -43,6 +52,7 @@ class BitfinexPollingActor extends HTTPPollingActor with ProducerBehavior {
   }
 
   val orderbookFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
+    implicit val timeCollected = t
     val msg = parse(responseEntityToString(entity))
     val ob = msg.extract[BitfinexPollingOrderBook]
 

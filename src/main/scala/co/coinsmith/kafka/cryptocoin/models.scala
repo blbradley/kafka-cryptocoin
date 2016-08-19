@@ -6,7 +6,7 @@ import co.coinsmith.kafka.cryptocoin.avro.InstantTypeMaps._
 import com.sksamuel.avro4s.RecordFormat
 
 
-case class Tick(last: BigDecimal, bid: BigDecimal, ask: BigDecimal,
+case class Tick(last: BigDecimal, bid: BigDecimal, ask: BigDecimal, timeCollected: Instant,
                 high: Option[BigDecimal] = None, low: Option[BigDecimal] = None, open: Option[BigDecimal] = None,
                 volume: Option[BigDecimal] = None, vwap: Option[BigDecimal] = None,
                 bidVolume: Option[BigDecimal] = None, askVolume: Option[BigDecimal] = None,
@@ -16,19 +16,21 @@ object Tick {
   val format = RecordFormat[Tick]
 }
 
-case class Order(price: BigDecimal, volume: BigDecimal, id: Option[Long] = None, timestamp: Option[Instant] = None)
+case class Order(price: BigDecimal, volume: BigDecimal, id: Option[Long] = None,
+                 timestamp: Option[Instant] = None, timeCollected: Option[Instant] = None)
 object Order {
   val format = RecordFormat[Order]
 
   def apply(price: String, volume: String) = new Order(BigDecimal(price), BigDecimal(volume))
 }
 
-case class OrderBook(bids: List[Order], asks: List[Order], timestamp: Option[Instant] = None)
+case class OrderBook(bids: List[Order], asks: List[Order],
+                     timestamp: Option[Instant] = None, timeCollected: Option[Instant] = None)
 object OrderBook {
   val format = RecordFormat[OrderBook]
 }
 
-case class Trade(price: BigDecimal, volume: BigDecimal, timestamp: Instant,
+case class Trade(price: BigDecimal, volume: BigDecimal, timestamp: Instant, timeCollected: Instant,
                  tpe: Option[String] = None, tid: Option[Long] = None,
                  bidoid: Option[Long] = None, askoid: Option[Long] = None,
                  seq: Option[String] = None)

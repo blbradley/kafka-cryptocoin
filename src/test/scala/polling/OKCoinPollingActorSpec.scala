@@ -38,8 +38,9 @@ class OKCoinPollingActorSpec
     val entity = HttpEntity.Strict(contentType, data)
 
     val expected = Tick(
-      2906.64, 2906.58, 2906.63,
-      Some(2915.0), Some(2885.6), None, volume = Some(635178.4712),
+      2906.64, 2906.58, 2906.63, timeCollected,
+      Some(2915.0), Some(2885.6), None,
+      volume = Some(635178.4712),
       timestamp = Some(timestamp)
     )
 
@@ -77,7 +78,7 @@ class OKCoinPollingActorSpec
       Order(2915.08, 0.172)
     )
 
-    val expected = OrderBook(bids, asks)
+    val expected = OrderBook(bids, asks, timeCollected = Some(timeCollected))
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
       .via(actor.orderbookFlow)

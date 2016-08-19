@@ -39,7 +39,12 @@ class BitstampPollingActorSpec
     val data = ByteString(compact(render(json)))
     val entity = HttpEntity.Strict(contentType, data)
 
-    val expected = Tick(415.24, 414.34, 415.24, Some(424.37), Some(407.22), Some(415.43), volume = Some(5961.02582305), vwap = Some(415.41), timestamp = Some(timestamp))
+    val expected = Tick(
+      415.24, 414.34, 415.24, timeCollected,
+      Some(424.37), Some(407.22), Some(415.43),
+      Some(5961.02582305), Some(415.41),
+      timestamp = Some(timestamp)
+    )
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
       .via(actor.tickFlow)
@@ -77,7 +82,7 @@ class BitstampPollingActorSpec
       Order("462.51", "0.05981955"),
       Order("462.88", "1.00000000")
     )
-    val expected = OrderBook(bids, asks, Some(Instant.ofEpochSecond(timestamp)))
+    val expected = OrderBook(bids, asks, Some(Instant.ofEpochSecond(timestamp)), Some(timeCollected))
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
       .via(actor.orderbookFlow)

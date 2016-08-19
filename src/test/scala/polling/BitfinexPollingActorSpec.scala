@@ -39,7 +39,7 @@ class BitfinexPollingActorSpec
     val data = ByteString(compact(render(json)))
     val entity = HttpEntity.Strict(contentType, data)
 
-    val expected = Tick(464.9, 464.8, 464.89, timestamp = Some(timestamp))
+    val expected = Tick(464.9, 464.8, 464.89, timeCollected, timestamp = Some(timestamp))
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
       .via(actor.tickFlow)
@@ -74,7 +74,7 @@ class BitfinexPollingActorSpec
       Order(464.49, 4.07481358, timestamp = Some(Instant.ofEpochSecond(1461607942L))),
       Order(464.63, 4.07481358, timestamp = Some(Instant.ofEpochSecond(1461607944L)))
     )
-    val expected = OrderBook(bids, asks)
+    val expected = OrderBook(bids, asks, timeCollected = Some(timeCollected))
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
       .via(actor.orderbookFlow)

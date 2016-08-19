@@ -18,11 +18,12 @@ case class BitstampStreamingTrade(id: Long, amount: Double, price: Double,
                                   tpe: Int, timestamp: String,
                                   buy_order_id: Long, sell_order_id: Long)
 object BitstampStreamingTrade {
-  implicit def toTrade(trade: BitstampStreamingTrade) =
+  implicit def toTrade(trade: BitstampStreamingTrade)(implicit timeCollected: Instant) =
     Trade(
       trade.price,
       trade.amount,
       Instant.ofEpochSecond(trade.timestamp.toLong),
+      timeCollected,
       Some(trade.tpe match {
         case 0 => "bid"
         case 1 => "ask"
@@ -40,11 +41,12 @@ case class BitstampStreamingOrderBook(
 object BitstampStreamingOrderBook {
   val toOrder = { o: List[String] => Order(o(0), o(1)) }
 
-  implicit def toOrderBook(ob: BitstampStreamingOrderBook) =
+  implicit def toOrderBook(ob: BitstampStreamingOrderBook)(implicit timeCollected: Instant) =
     OrderBook(
       ob.bids map toOrder,
       ob.asks map toOrder,
-      ob.timestamp map { _.toLong } map Instant.ofEpochSecond
+      ob.timestamp map { _.toLong } map Instant.ofEpochSecond,
+      Some(timeCollected)
     )
 }
 
@@ -96,15 +98,18 @@ class BitstampPusherProtocol extends Actor {
 
   def receive =  {
     case ("live_trades", "trade", t: Instant, json: JValue) =>
+      implicit val timeCollected = t
       // some json processing required due to 'type' as a key name
       val trade = (json transformField{
         case ("type", v) => ("tpe", v)
       }).extract[BitstampStreamingTrade]
       sender ! ("trades", Trade.format.to(trade))
     case ("order_book", "data", t: Instant, json: JValue) =>
+      implicit val timeCollected = t
       val ob = json.extract[BitstampStreamingOrderBook]
       sender ! ("orderbook", OrderBook.format.to(ob))
     case ("diff_order_book", "data", t: Instant, json: JValue) =>
+      implicit val timeCollected = t
       val diff = json.extract[BitstampStreamingOrderBook]
       sender ! ("orderbook.updates", OrderBook.format.to(diff))
   }

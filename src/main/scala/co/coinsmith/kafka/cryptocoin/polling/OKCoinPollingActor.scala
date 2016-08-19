@@ -19,9 +19,13 @@ case class OKCoinPollingTick(
 )
 case class OKCoinPollingDatedTick(date: String, ticker: OKCoinPollingTick)
 object OKCoinPollingDatedTick  {
-  implicit def toTick(datedTick: OKCoinPollingDatedTick) = {
+  implicit def toTick(datedTick: OKCoinPollingDatedTick)(implicit timeCollected: Instant) = {
     val tick = datedTick.ticker
-    Tick(tick.last.toDouble, tick.buy.toDouble, tick.sell.toDouble, Some(tick.high.toDouble), Some(tick.low.toDouble), None, volume = Some(tick.vol.toDouble), vwap = None, timestamp = Some(Instant.ofEpochSecond(datedTick.date.toLong)))
+    Tick(tick.last.toDouble, tick.buy.toDouble, tick.sell.toDouble, timeCollected,
+      Some(tick.high.toDouble), Some(tick.low.toDouble), None,
+      volume = Some(tick.vol.toDouble), vwap = None,
+      timestamp = Some(Instant.ofEpochSecond(datedTick.date.toLong))
+    )
   }
 }
 
@@ -29,11 +33,12 @@ case class OKCoinPollingOrderBook(asks: List[List[Double]], bids: List[List[Doub
 object OKCoinPollingOrderBook {
   val toOrder = { o: List[Double] => Order(o(0), o(1)) }
 
-  implicit def toOrderBook(ob: OKCoinPollingOrderBook) =
+  implicit def toOrderBook(ob: OKCoinPollingOrderBook)(implicit timeCollected: Instant) =
     OrderBook(
       ob.bids map toOrder,
       ob.asks map toOrder,
-      None
+      None,
+      Some(timeCollected)
     )
 }
 
@@ -42,6 +47,7 @@ class OKCoinPollingActor extends HTTPPollingActor with ProducerBehavior {
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("www.okcoin.cn")
 
   val tickFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
+    implicit val timeCollected = t
     val msg = parse(responseEntityToString(entity))
     val tick = msg.extract[OKCoinPollingDatedTick]
 
@@ -49,6 +55,7 @@ class OKCoinPollingActor extends HTTPPollingActor with ProducerBehavior {
   }
 
   val orderbookFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
+    implicit val timeCollected = t
     val msg = parse(responseEntityToString(entity))
     val ob = msg.extract[OKCoinPollingOrderBook]
 

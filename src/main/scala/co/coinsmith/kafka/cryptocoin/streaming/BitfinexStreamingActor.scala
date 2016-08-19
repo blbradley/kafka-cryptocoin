@@ -36,9 +36,9 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
     case _ => true
   }
 
-  def toTick(arr: List[Double]) =
+  def toTick(arr: List[Double])(implicit timeCollected: Instant) =
     Tick(
-      arr(6), arr(0), arr(2),
+      arr(6), arr(0), arr(2), timeCollected,
       Some(arr(8)), Some(arr(9)), None,
       Some(arr(7)), None,
       Some(arr(1)), Some(arr(3)),
@@ -47,13 +47,13 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
 
   def toOrder(order: List[Double]) = Order(order(1), order(2), Some(order(0).toLong))
 
-  def toTrade(trade: JValue) = trade match {
+  def toTrade(trade: JValue)(implicit timeCollected: Instant) = trade match {
     case JArray(JString(seq) :: JInt(id) :: JInt(timestamp) :: JDouble(price) :: JDouble(volume) :: Nil) =>
-      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong),  tid = Some(id.toLong), seq = Some(seq))
+      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), timeCollected, tid = Some(id.toLong), seq = Some(seq))
     case JArray(JString(seq) :: JInt(timestamp) :: JDouble(price) :: JDouble(volume) :: Nil) =>
-      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), seq = Some(seq))
+      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), timeCollected, seq = Some(seq))
     case JArray(JInt(id) :: JInt(timestamp) :: JDouble(price) :: JDouble(volume) :: Nil) =>
-      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong),  tid = Some(id.toLong))
+      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), timeCollected,  tid = Some(id.toLong))
     case _ => throw new Exception(s"Trade snapshot processing error for $trade")
   }
 
@@ -70,12 +70,14 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
     case (t: Instant, JArray(JInt(channelId) :: JString("hb") :: Nil)) =>
       log.debug("Received heartbeat message for channel ID {}", channelId)
     case (t: Instant, JArray(JInt(channelId) :: JArray(data) :: Nil)) =>
+      implicit val timeCollected = t
       getChannelName(channelId) match {
         case "book" =>
           val orders = JArray(data).extract[List[List[Double]]] map toOrder
           val ob = OrderBook(
             orders filter { _.volume > 0 },
-            orders filter { _.volume < 0 }
+            orders filter { _.volume < 0 },
+            timeCollected = Some(t)
           )
           sender ! ("orderbook.snapshots", OrderBook.format.to(ob))
         case "trades" => data map toTrade foreach { trade =>
@@ -83,6 +85,7 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
         }
       }
     case (t: Instant, JArray(JInt(channelId) :: JString(updateType) :: xs)) =>
+      implicit val timeCollected = t
       val topic = updateType match {
         case "tu" => "trades"
         case "te" => "trades.executions"
@@ -90,6 +93,7 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
       val trade = toTrade(JArray(xs))
       sender ! (topic, Trade.format.to(trade))
     case (t: Instant, JArray(JInt(channelId) :: xs)) =>
+      implicit val timeCollected = t
       getChannelName(channelId) match {
         case "book" =>
           val order = toOrder(JArray(xs).extract[List[Double]])
