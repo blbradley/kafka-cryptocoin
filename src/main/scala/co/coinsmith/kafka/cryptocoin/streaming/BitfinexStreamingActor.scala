@@ -48,12 +48,22 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
   def toOrder(order: List[Double])(implicit timeCollected: Instant) =
     Order(order(1), order(2), Some(order(0).toLong), Some(timeCollected))
 
+  def toDouble(v: JValue) = v match {
+    case JInt(i) => i.toDouble
+    case JDouble(d) => d
+    case _ => throw new Exception(s"Could not convert to double: $v")
+  }
+
+  // price and volume can be JInt or JDouble
   def toTrade(trade: JValue)(implicit timeCollected: Instant) = trade match {
-    case JArray(JString(seq) :: JInt(id) :: JInt(timestamp) :: JDouble(price) :: JDouble(volume) :: Nil) =>
+    case JArray(JString(seq) :: JInt(id) :: JInt(timestamp) :: xs) =>
+      val List(price, volume) = xs map toDouble
       Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), timeCollected, tid = Some(id.toLong), seq = Some(seq))
-    case JArray(JString(seq) :: JInt(timestamp) :: JDouble(price) :: JDouble(volume) :: Nil) =>
+    case JArray(JString(seq) :: JInt(timestamp) :: xs) =>
+      val List(price, volume) = xs map toDouble
       Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), timeCollected, seq = Some(seq))
-    case JArray(JInt(id) :: JInt(timestamp) :: JDouble(price) :: JDouble(volume) :: Nil) =>
+    case JArray(JInt(id) :: JInt(timestamp) :: xs) =>
+      val List(price, volume) = xs map toDouble
       Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), timeCollected,  tid = Some(id.toLong))
     case _ => throw new Exception(s"Trade snapshot processing error for $trade")
   }
