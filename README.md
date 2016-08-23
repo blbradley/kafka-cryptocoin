@@ -28,7 +28,7 @@ Usage
 Start the the required services. Then, run:
 
     export KAFKA_CRYPTOCOIN_BOOTSTRAP_SERVERS=localhost:9092
-    export KAFKA_CRYPTOCOIN_SCHEMA_REGISTRY=http://localhost:8081
+    export KAFKA_CRYPTOCOIN_SCHEMA_REGISTRY_URL=http://localhost:8081
     sbt run
 
 ###Running the tests
@@ -45,9 +45,13 @@ Images for development and mainline versions are built and pushed to Docker Hub
 when a pull request is merged. Merges into `develop` or `master` are published as
 `develop` and `latest` respectively.
 
-This downloads the latest development version. Start a Kafka broker or set your own.
+This downloads the latest development version.
 
-    docker run -e KAFKA_CRYPTOCOIN_BOOTSTRAP_SERVERS=localhost:9092 coinsmith/kafka-cryptocoin:develop
+    docker run \
+    -e KAFKA_CRYPTOCOIN_BOOTSTRAP_SERVERS=localhost:9092 \
+    -e KAFKA_CRYPTOCOIN_SCHEMA_REGISTRY_URL=http://localhost:8081 \
+    coinsmith/kafka-cryptocoin:develop
+
 
 ###Build a Docker image
 
