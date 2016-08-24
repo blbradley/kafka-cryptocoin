@@ -3,14 +3,52 @@ package co.coinsmith.kafka.cryptocoin.streaming
 import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Trade}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import com.pusher.client.Pusher
 import com.pusher.client.channel.ChannelEventListener
 import com.pusher.client.connection.{ConnectionEventListener, ConnectionState, ConnectionStateChange}
+import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
+
+case class BitstampStreamingTrade(id: Long, amount: Double, price: Double,
+                                  tpe: Int, timestamp: String,
+                                  buy_order_id: Long, sell_order_id: Long)
+object BitstampStreamingTrade {
+  implicit def toTrade(trade: BitstampStreamingTrade)(implicit timeCollected: Instant) =
+    Trade(
+      trade.price,
+      trade.amount,
+      Instant.ofEpochSecond(trade.timestamp.toLong),
+      timeCollected,
+      Some(trade.tpe match {
+        case 0 => "bid"
+        case 1 => "ask"
+      }),
+      Some(trade.id),
+      Some(trade.buy_order_id),
+      Some(trade.sell_order_id))
+}
+
+case class BitstampStreamingOrderBook(
+  bids: List[List[String]],
+  asks: List[List[String]],
+  timestamp: Option[String]
+)
+object BitstampStreamingOrderBook {
+  val toOrder = { o: List[String] => Order(o(0), o(1)) }
+
+  implicit def toOrderBook(ob: BitstampStreamingOrderBook)(implicit timeCollected: Instant) =
+    OrderBook(
+      ob.bids map toOrder,
+      ob.asks map toOrder,
+      ob.timestamp map { _.toLong } map Instant.ofEpochSecond,
+      Some(timeCollected)
+    )
+}
 
 class BitstampPusherActor extends Actor with ActorLogging {
   var receiver: ActorRef = _
@@ -56,30 +94,24 @@ class BitstampPusherActor extends Actor with ActorLogging {
 }
 
 class BitstampPusherProtocol extends Actor {
-  def mergeInstant(key: String, t: Instant, json: JValue) = {
-    render(key -> t.toString) merge json
-  }
+  implicit val formats = DefaultFormats
 
   def receive =  {
     case ("live_trades", "trade", t: Instant, json: JValue) =>
-      val trade = json transformField {
-        case ("timestamp", JString(t)) => ("timestamp", Instant.ofEpochSecond(t.toLong).toString)
-        case ("amount", v) => ("volume", v)
-      }
-      sender ! ("trades", mergeInstant("time_collected", t, trade))
+      implicit val timeCollected = t
+      // some json processing required due to 'type' as a key name
+      val trade = (json transformField{
+        case ("type", v) => ("tpe", v)
+      }).extract[BitstampStreamingTrade]
+      sender ! ("trades", Trade.format.to(trade))
     case ("order_book", "data", t: Instant, json: JValue) =>
-      val ob = json transform {
-        case JString(v) => JDecimal(BigDecimal(v))
-      }
-      sender ! ("orderbook", mergeInstant("time_collected", t, ob))
+      implicit val timeCollected = t
+      val ob = json.extract[BitstampStreamingOrderBook]
+      sender ! ("orderbook", OrderBook.format.to(ob))
     case ("diff_order_book", "data", t: Instant, json: JValue) =>
-      val diff = json transformField {
-        case ("timestamp", JString(t)) => ("timestamp", t.toLong)
-      } transform {
-        case JInt(t) => JString(Instant.ofEpochSecond(t.toLong).toString)
-        case JString(v) => JDecimal(BigDecimal(v))
-      }
-      sender ! ("orderbook.updates", mergeInstant("time_collected", t, diff))
+      implicit val timeCollected = t
+      val diff = json.extract[BitstampStreamingOrderBook]
+      sender ! ("orderbook.updates", OrderBook.format.to(diff))
   }
 }
 

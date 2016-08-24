@@ -6,36 +6,65 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ResponseEntity
 import akka.stream.scaladsl.Flow
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
-import co.coinsmith.kafka.cryptocoin.{Order, Utils}
-import org.json4s.JsonAST._
-import org.json4s.JsonDSL.WithBigDecimal._
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
 import org.json4s.jackson.JsonMethods._
 
+case class BitstampPollingTick(
+  high: String,
+  last: String,
+  timestamp: String,
+  bid: String,
+  vwap: String,
+  volume: String,
+  low: String,
+  ask: String,
+  open: Double
+)
+object BitstampPollingTick {
+  implicit def toTick(tick: BitstampPollingTick)(implicit timeCollected: Instant) =
+    Tick(
+      tick.last.toDouble, tick.bid.toDouble, tick.ask.toDouble, timeCollected,
+      Some(tick.high.toDouble), Some(tick.low.toDouble), Some(tick.open),
+      volume = Some(tick.volume.toDouble), vwap = Some(tick.vwap.toDouble),
+      timestamp = Some(Instant.ofEpochSecond(tick.timestamp.toLong))
+    )
+}
+
+case class BitstampPollingOrderBook(
+  timestamp: String,
+  bids: List[List[String]],
+  asks: List[List[String]]
+)
+object BitstampPollingOrderBook {
+  val toOrder = { o: List[String] => Order(o(0), o(1)) }
+
+  implicit def toOrderBook(ob: BitstampPollingOrderBook)(implicit timeCollected: Instant) =
+    OrderBook(
+      ob.bids map toOrder,
+      ob.asks map toOrder,
+      Some(Instant.ofEpochSecond(ob.timestamp.toLong)),
+      Some(timeCollected)
+    )
+}
 
 class BitstampPollingActor extends HTTPPollingActor with ProducerBehavior {
   val topicPrefix = "bitstamp.polling.btcusd."
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("www.bitstamp.net")
 
   val tickFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
-    val json = parse(responseEntityToString(entity)).transformField {
-      case JField("timestamp", JString(t)) => JField("timestamp", JString(Instant.ofEpochSecond(t.toLong).toString))
-      case JField("open", JDouble(open)) => JField("open", BigDecimal(open))
-      case JField(key, JString(value)) => JField(key, JDecimal(BigDecimal(value)))
-    } merge render("time_collected" -> t.toString)
-    ("ticks", json)
+    implicit val timeCollected = t
+    val msg = parse(responseEntityToString(entity))
+    val tick = msg.extract[BitstampPollingTick]
+
+    ("ticks", Tick.format.to(tick))
   }
 
   val orderbookFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
-    val json = parse(responseEntityToString(entity)).transformField {
-      case JField("timestamp", JString(t)) => JField("timestamp", JString(Instant.ofEpochSecond(t.toLong).toString))
-    }
-    val timestamp = (json \ "timestamp").extract[String]
-    val asks = (json \ "asks").extract[List[List[String]]]
-      .map { o => new Order(BigDecimal(o(0)), BigDecimal(o(1))) }
-    val bids = (json \ "bids").extract[List[List[String]]]
-      .map { o => new Order(BigDecimal(o(0)), BigDecimal(o(1))) }
-    val orderbook = Utils.orderBookToJson(Some(timestamp), t, asks, bids)
-    ("orderbook", orderbook)
+    implicit val timeCollected = t
+    val msg = parse(responseEntityToString(entity))
+    val ob = msg.extract[BitstampPollingOrderBook]
+
+    ("orderbook", OrderBook.format.to(ob))
   }
 
   def receive = periodicBehavior orElse producerBehavior orElse {

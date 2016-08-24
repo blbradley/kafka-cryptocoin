@@ -21,7 +21,7 @@ abstract class HTTPPollingActor extends Actor with ActorLogging {
   import context.dispatcher
 
   val responseFlow = Flow[(Try[HttpResponse], String)].map {
-    case (Success(HttpResponse(statusCode, _, entity, _)), _) =>
+    case (Success(HttpResponse(statusCode, headers, entity, _)), _) =>
       val timeCollected = Instant.now
       log.debug("Request returned status code {} with entity {}",  statusCode, entity)
       (timeCollected, entity)

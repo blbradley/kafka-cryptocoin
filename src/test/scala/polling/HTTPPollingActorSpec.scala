@@ -15,7 +15,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike}
 class HTTPPollingActorSpec(_system: ActorSystem) extends TestKit(_system)
   with FlatSpecLike with BeforeAndAfterAll {
 
-  override def afterAll {
+  override def afterAll = {
     TestKit.shutdownActorSystem(system)
   }
 

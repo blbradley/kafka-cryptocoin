@@ -5,6 +5,7 @@ import java.time._
 
 import akka.actor.{Actor, ActorLogging, Props}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick, Trade}
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
@@ -13,19 +14,59 @@ import org.json4s.jackson.JsonMethods._
 
 case class Data(timeCollected: Instant, channel: String, data: JValue)
 
+case class OKCoinStreamingTick(buy: String, high: String, last: String, low: String,
+                               sell: String, timestamp: String, vol: String)
+object OKCoinStreamingTick {
+  implicit def toTick(tick: OKCoinStreamingTick)(implicit timeCollected: Instant)  =
+    Tick(
+      tick.last.toDouble, tick.buy.toDouble, tick.sell.toDouble, timeCollected,
+      Some(tick.high.toDouble), Some(tick.low.toDouble),
+      volume = Some(tick.vol.replace(",", "").toDouble),
+      timestamp = Some(Instant.ofEpochMilli(tick.timestamp.toLong))
+    )
+}
+
+case class OKCoinStreamingOrderBook(bids: List[List[Double]], asks: List[List[Double]], timestamp: String)
+object OKCoinStreamingOrderBook {
+  val toOrder = { o: List[Double] => Order(o(0), o(1)) }
+
+  implicit def toOrderBook(ob: OKCoinStreamingOrderBook)(implicit timeCollected: Instant)  =
+    OrderBook(
+      ob.bids map toOrder, ob.asks map toOrder,
+      Some(Instant.ofEpochMilli(ob.timestamp.toLong)), Some(timeCollected)
+    )
+}
+
 class OKCoinWebsocketProtocol extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
 
-  def mergeInstant(key: String, t: Instant, json: JValue) = {
-    render(key -> t.toString) merge json
+  def adjustTimestamp(timeCollected: Instant, time: String) = {
+    val zone = ZoneId.of("Asia/Shanghai")
+    val collectedZoned = ZonedDateTime.ofInstant(timeCollected, ZoneOffset.UTC)
+      .withZoneSameInstant(zone)
+    var tradeZoned = LocalTime.parse(time).atDate(collectedZoned.toLocalDate).atZone(zone)
+    if ((tradeZoned compareTo collectedZoned) > 0) {
+      // correct date if time collected happens right after midnight
+      tradeZoned = tradeZoned minusDays 1
+    }
+
+    tradeZoned.withZoneSameInstant(ZoneOffset.UTC).toInstant
   }
+
+  def toTrade(trade: List[String])(implicit timeCollected: Instant) =
+    Trade(
+      trade(1).toDouble,
+      trade(2).toDouble,
+      adjustTimestamp(timeCollected, trade(3)),
+      timeCollected,
+      Some(trade(4)),
+      Some(trade(0).toLong)
+    )
 
   def receive = {
     case (t: Instant, events: JArray) =>
       // OKCoin websocket responses are an array of multiple events
-      events transformField {
-        case JField("timestamp", JString(t)) => ("timestamp" -> Instant.ofEpochMilli(t.toLong).toString)
-      } match {
+      events match {
         case JArray(arr) => arr.foreach { event => self forward (t, event) }
         case _ => new Exception("Message did not contain array.")
       }
@@ -42,37 +83,21 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
       self forward Data(t, channel, data)
 
     case Data(t, "ok_sub_spotcny_btc_ticker", data) =>
-      val json = data.transformField {
-        case JField("sell", v) => JField("ask", v)
-        case JField("buy", v) => JField("bid", v)
-        case JField("vol", JString(v)) => JField("volume", JDecimal(BigDecimal(v.replace(",", ""))))
-        case JField(key, JString(value)) if key != "timestamp" => JField(key, JDecimal(BigDecimal(value)))
-      } merge render("time_collected" -> t.toString)
-      sender ! ("ticks", json)
+      implicit val timeCollected = t
+      val tick = data.extract[OKCoinStreamingTick]
+      sender ! ("ticks", Tick.format.to(tick))
 
     case Data(t, "ok_sub_spotcny_btc_depth_60", data) =>
-      sender ! ("orderbook", mergeInstant("time_collected", t, data))
+      implicit val timeCollected = t
+      val ob = data.extract[OKCoinStreamingOrderBook]
+      sender ! ("orderbook", OrderBook.format.to(ob))
 
     case Data(t, "ok_sub_spotcny_btc_trades", data: JArray) =>
-      val json = data.transform {
-        case JArray(JString(id) :: JString(p) :: JString(v) :: JString(time) :: JString(kind) :: Nil) =>
-          val zone = ZoneId.of("Asia/Shanghai")
-          val collectedZoned = ZonedDateTime.ofInstant(t, ZoneOffset.UTC)
-            .withZoneSameInstant(zone)
-          var tradeZoned = LocalTime.parse(time).atDate(collectedZoned.toLocalDate).atZone(zone)
-          if ((tradeZoned compareTo collectedZoned) > 0) {
-            // correct date if time collected happens right after midnight
-            tradeZoned = tradeZoned minusDays 1
-          }
-          val timestamp = tradeZoned.withZoneSameInstant(ZoneOffset.UTC)
-          ("timestamp" -> timestamp.toString) ~
-            ("time_collected" -> t.toString) ~
-            ("id" -> id.toLong) ~
-            ("price" -> BigDecimal(p)) ~
-            ("volume" -> BigDecimal(v)) ~
-            ("type" -> kind)
+      implicit val timeCollected = t
+      val trades = data.extract[List[List[String]]] map toTrade
+      trades foreach { trade =>
+        sender ! ("trades", Trade.format.to(trade))
       }
-      sender ! ("trades", json)
   }
 }
 

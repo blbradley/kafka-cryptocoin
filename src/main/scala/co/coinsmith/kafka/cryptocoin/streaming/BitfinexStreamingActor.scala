@@ -4,13 +4,17 @@ import java.net.URI
 import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging, Props}
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick, Trade}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
+import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
 
 class BitfinexWebsocketProtocol extends Actor with ActorLogging {
+  implicit val formats = DefaultFormats
+
   var subscribed = Map.empty[BigInt, String]
   def getChannelName(channelId: BigInt) = subscribed(channelId)
   def topic(channelId: BigInt, updateType: String): String = {
@@ -24,18 +28,44 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
     }
   }
 
-  def processOrder(order: JValue) = {
-    ("id" -> order(0)) ~
-      ("price" -> order(1)) ~
-      ("volume" -> order(2))
-  }
-
   def isEvent(event: JValue): Boolean = event.findField {
     case ("event", eventName: JString) => true
     case _ => false
   } match {
     case None => false
     case _ => true
+  }
+
+  def toTick(arr: List[Double])(implicit timeCollected: Instant) =
+    Tick(
+      arr(6), arr(0), arr(2), timeCollected,
+      Some(arr(8)), Some(arr(9)), None,
+      Some(arr(7)), None,
+      Some(arr(1)), Some(arr(3)),
+      Some(arr(4)), Some(arr(5))
+    )
+
+  def toOrder(order: List[Double])(implicit timeCollected: Instant) =
+    Order(order(1), order(2), Some(order(0).toLong), Some(timeCollected))
+
+  def toDouble(v: JValue) = v match {
+    case JInt(i) => i.toDouble
+    case JDouble(d) => d
+    case _ => throw new Exception(s"Could not convert to double: $v")
+  }
+
+  // price and volume can be JInt or JDouble
+  def toTrade(trade: JValue)(implicit timeCollected: Instant) = trade match {
+    case JArray(JString(seq) :: JInt(id) :: JInt(timestamp) :: xs) =>
+      val List(price, volume) = xs map toDouble
+      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), timeCollected, tid = Some(id.toLong), seq = Some(seq))
+    case JArray(JString(seq) :: JInt(timestamp) :: xs) =>
+      val List(price, volume) = xs map toDouble
+      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), timeCollected, seq = Some(seq))
+    case JArray(JInt(id) :: JInt(timestamp) :: xs) =>
+      val List(price, volume) = xs map toDouble
+      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), timeCollected,  tid = Some(id.toLong))
+    case _ => throw new Exception(s"Trade snapshot processing error for $trade")
   }
 
   def receive = {
@@ -51,27 +81,38 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
     case (t: Instant, JArray(JInt(channelId) :: JString("hb") :: Nil)) =>
       log.debug("Received heartbeat message for channel ID {}", channelId)
     case (t: Instant, JArray(JInt(channelId) :: JArray(data) :: Nil)) =>
-      val json = getChannelName(channelId) match {
-        case "book" => data map processOrder
-        case "trades" => data map { t =>
-          val seqOrId = t(0) match {
-            case seq: JString => ("seq" -> seq)
-            case id: JInt => ("id" -> id)
-            case _ => throw new Exception(s"Trade snapshot processing error for $t")
-          }
-          seqOrId ~ ("timestamp" -> t(1)) ~ ("price" -> t(2)) ~ ("volume" -> t(3))
+      implicit val timeCollected = t
+      getChannelName(channelId) match {
+        case "book" =>
+          val orders = JArray(data).extract[List[List[Double]]] map toOrder
+          val ob = OrderBook(
+            orders filter { _.volume > 0 },
+            orders filter { _.volume < 0 },
+            timeCollected = Some(t)
+          )
+          sender ! ("orderbook.snapshots", OrderBook.format.to(ob))
+        case "trades" => data map toTrade foreach { trade =>
+          sender ! ("trades.snapshots", Trade.format.to(trade))
         }
-        case _ => throw new Exception("Snapshot does not have nested array structure.")
       }
-      sender ! (topic(channelId, "snapshot"), JArray(json))
     case (t: Instant, JArray(JInt(channelId) :: JString(updateType) :: xs)) =>
-      sender ! (topic(channelId, updateType), JArray(xs))
-    case (t: Instant, JArray(JInt(channelId) :: xs)) =>
-      val updateType = xs.length match {
-        case 3 => "update"
-        case 10 => "ticker"
+      implicit val timeCollected = t
+      val topic = updateType match {
+        case "tu" => "trades"
+        case "te" => "trades.executions"
       }
-      sender ! (topic(channelId, updateType), JArray(xs))
+      val trade = toTrade(JArray(xs))
+      sender ! (topic, Trade.format.to(trade))
+    case (t: Instant, JArray(JInt(channelId) :: xs)) =>
+      implicit val timeCollected = t
+      getChannelName(channelId) match {
+        case "book" =>
+          val order = toOrder(JArray(xs).extract[List[Double]])
+          sender ! ("orderbook", Order.format.to(order))
+        case "ticker" =>
+          val tick = toTick(JArray(xs).extract[List[Double]])
+          sender ! ("ticker", Tick.format.to(tick))
+      }
     case m => throw new Exception(s"Unhandled message: $m")
   }
 }
