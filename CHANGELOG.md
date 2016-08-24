@@ -16,8 +16,6 @@ v0.0.1
 * Added Bitstamp streaming
 * Streaming collects order book snapshots, depth updates, and trades
 
-Topic List: `ticks`, `orderbooks`, `stream_orders`, `stream_depth`, `stream_trades`
-
 
 v0.0.0
 ------
@@ -25,5 +23,3 @@ v0.0.0
 * Initial release
 * Bitstamp and BitFinex support
 * Polls ticker data every 30 seconds
-
-Topic List: `ticks`
