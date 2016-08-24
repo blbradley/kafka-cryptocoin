@@ -25,8 +25,6 @@ resolvers ++= Seq(
   "Confluent Maven Repo" at "http://packages.confluent.io/maven/"
 )
 
-parallelExecution in Test := false
-
 enablePlugins(GitVersioning)
 enablePlugins(DockerPlugin)
 
