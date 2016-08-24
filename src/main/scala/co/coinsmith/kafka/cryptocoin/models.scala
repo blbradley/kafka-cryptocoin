@@ -3,6 +3,7 @@ package co.coinsmith.kafka.cryptocoin
 import java.time.Instant
 
 import co.coinsmith.kafka.cryptocoin.avro.InstantTypeMaps._
+import co.coinsmith.kafka.cryptocoin.avro.GlobalScaleAndPrecision._
 import com.sksamuel.avro4s.RecordFormat
 
 
