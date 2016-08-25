@@ -3,7 +3,7 @@ Kafka Cryptocoin
 
 Kafka producer for data collection from cryptocurrency exchanges
 
-![Travis CI Status](https://travis-ci.org/blbradley/kafka-cryptocoin.svg)
+[![Build Status](https://travis-ci.org/blbradley/kafka-cryptocoin.svg?branch=develop)](https://travis-ci.org/blbradley/kafka-cryptocoin)
 
 
 Configuration
