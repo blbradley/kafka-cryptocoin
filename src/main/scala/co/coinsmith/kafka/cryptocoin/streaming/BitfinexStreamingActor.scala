@@ -17,16 +17,6 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
 
   var subscribed = Map.empty[BigInt, String]
   def getChannelName(channelId: BigInt) = subscribed(channelId)
-  def topic(channelId: BigInt, updateType: String): String = {
-    (getChannelName(channelId), updateType) match {
-      case ("book", "snapshot")   => "orderbook.snapshots"
-      case ("book", "update")     => "orderbook"
-      case ("trades", "snapshot") => "trades.snapshots"
-      case ("trades", "tu")       => "trades"
-      case ("trades", "te")       => "trades.executions"
-      case ("ticker", "ticker")   => "ticker"
-    }
-  }
 
   def isEvent(event: JValue): Boolean = event.findField {
     case ("event", eventName: JString) => true
