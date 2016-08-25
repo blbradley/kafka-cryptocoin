@@ -61,4 +61,4 @@ are running locally.
     sbt docker
 
 Then, you can run it as specified above. Images built from code will be tagged as the
-current snapshot current.
+current snapshot version.
