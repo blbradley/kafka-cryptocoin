@@ -42,12 +42,15 @@ Docker
 ###Run Docker image
 
 Images for development and mainline versions are built and pushed to Docker Hub
-when a pull request is merged. Merges into `develop` or `master` are published as
-`develop` and `latest` respectively.
+when a pull request is merged. Merges into git branches `develop` or `master` are
+images published on Docker Hub with tags `develop` and `latest` respectively.
+Project releases are published with tags equal to the git release tag.
 
-This downloads the latest development version.
 
-    docker run \
+This downloads the latest development version and assumes your required services
+are running locally.
+
+    docker run --net=host \
     -e KAFKA_CRYPTOCOIN_BOOTSTRAP_SERVERS=localhost:9092 \
     -e KAFKA_CRYPTOCOIN_SCHEMA_REGISTRY_URL=http://localhost:8081 \
     coinsmith/kafka-cryptocoin:develop
@@ -57,4 +60,5 @@ This downloads the latest development version.
 
     sbt docker
 
-Then, you can run it as specified above.
+Then, you can run it as specified above. Images built from code will be tagged as the
+current snapshot current.
