@@ -56,15 +56,12 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
 
   // price and volume can be JInt or JDouble
   def toTrade(trade: JValue)(implicit timeCollected: Instant) = trade match {
-    case JArray(JString(seq) :: JInt(id) :: JInt(timestamp) :: xs) =>
-      val List(price, volume) = xs map toDouble
-      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), timeCollected, tid = Some(id.toLong), seq = Some(seq))
-    case JArray(JString(seq) :: JInt(timestamp) :: xs) =>
-      val List(price, volume) = xs map toDouble
-      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), timeCollected, seq = Some(seq))
-    case JArray(JInt(id) :: JInt(timestamp) :: xs) =>
-      val List(price, volume) = xs map toDouble
-      Trade(price, volume, Instant.ofEpochSecond(timestamp.toLong), timeCollected,  tid = Some(id.toLong))
+    case JArray(JString(seq) :: JInt(id) :: JInt(timestamp) :: price :: volume :: Nil) =>
+      Trade(toDouble(price), toDouble(volume), Instant.ofEpochSecond(timestamp.toLong), timeCollected, tid = Some(id.toLong), seq = Some(seq))
+    case JArray(JString(seq) :: JInt(timestamp) :: price :: volume :: Nil) =>
+      Trade(toDouble(price), toDouble(volume), Instant.ofEpochSecond(timestamp.toLong), timeCollected, seq = Some(seq))
+    case JArray(JInt(id) :: JInt(timestamp) :: price :: volume :: Nil) =>
+      Trade(toDouble(price), toDouble(volume), Instant.ofEpochSecond(timestamp.toLong), timeCollected,  tid = Some(id.toLong))
     case _ => throw new Exception(s"Trade snapshot processing error for $trade")
   }
 
