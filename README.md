@@ -41,7 +41,7 @@ Docker
 
 ###Run Docker image
 
-Images for development and mainline versions are built and pushed to Docker Hub
+Images for development and mainline versions are built and pushed to [Docker Hub](https://hub.docker.com/r/coinsmith/kafka-cryptocoin)
 when a pull request is merged. Merges into git branches `develop` or `master` are
 images published on Docker Hub with tags `develop` and `latest` respectively.
 Project releases are published with tags equal to the git release tag.
