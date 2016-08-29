@@ -35,7 +35,7 @@ class WebsocketActor(uri: URI) extends Actor with ActorLogging {
     }
 
     override def onClose(session: Session, closeReason: CloseReason) = {
-      log.warning("Websocket disconnected. Reason: {}", closeReason)
+      log.info("Websocket for {} disconnected with reason: {}", receiver.path.name, closeReason)
     }
   }
 
@@ -51,7 +51,7 @@ class WebsocketActor(uri: URI) extends Actor with ActorLogging {
 
   def connect = {
     client.connectToServer(endpoint, cec, uri)
-    log.info("Websocket connected.")
+    log.info("Websocket for {} connected.", receiver.path.name)
   }
 
   def receive = {
