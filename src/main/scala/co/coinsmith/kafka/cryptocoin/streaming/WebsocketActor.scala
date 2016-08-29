@@ -37,6 +37,11 @@ class WebsocketActor(uri: URI) extends Actor with ActorLogging {
     override def onClose(session: Session, closeReason: CloseReason) = {
       log.info("Websocket for {} disconnected with reason: {}", receiver.path.name, closeReason)
     }
+
+    override def onError(session: Session, thr: Throwable) = {
+      log.error(thr, "Websocket error for {}", receiver.path.name)
+      throw thr
+    }
   }
 
   val reconnectHandler = new ReconnectHandler {
