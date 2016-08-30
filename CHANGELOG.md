@@ -5,7 +5,13 @@ CHANGELOG
 v0.0.2
 ------
 
-* Topic per exchange and data type
+* reimplementation using Akka Streams for polling and Actors for streaming
+* removal of [XChange](https://github.com/timmolter/XChange) usage due to inconsistent streaming implementations
+* updated to new Kafka Producer API
+* updated to Kafka 0.10.0.0
+* Avro data format for Kafka topics
+* consistent Avro schemas for similar data elements across different exchanges
+* topic per exchange and data type
 
 
 v0.0.1
