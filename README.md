@@ -10,7 +10,7 @@ Configuration
 -------------
 
 * `KAFKA_CRYPTOCOIN_BOOTSTRAP_SERVERS`: Comma separated list of Kafka brokers. Port is required.
-* `KAFKA_CRYPTOCOIN_SCHEMA_REGISTRY`: URL for Kafka Schema Registry
+* `KAFKA_CRYPTOCOIN_SCHEMA_REGISTRY_URL`: URL for Kafka Schema Registry
 
 
 Kafka
