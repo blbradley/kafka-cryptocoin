@@ -14,6 +14,7 @@ services:
 before_deploy:
   - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
   - git checkout $TRAVIS_BRANCH
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then git tag v$(sbt --error "export version" 2>/dev/null); fi
 
 deploy:
   provider: script
