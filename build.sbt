@@ -18,6 +18,7 @@ libraryDependencies += "com.pusher" % "pusher-java-client" % "1.2.1"
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.6" % "test",
+  "org.glassfish.tyrus.tests" % "tyrus-test-tools" % "1.13" % "test",
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test",
   "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % "test"
 )
