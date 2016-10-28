@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+v0.0.3
+------
+
+* exchanges can be disabled via configuration
+
 
 v0.0.2
 ------
