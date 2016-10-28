@@ -1,4 +1,4 @@
-package polling
+package co.coinsmith.kafka.cryptocoin.polling
 
 import java.time.Instant
 

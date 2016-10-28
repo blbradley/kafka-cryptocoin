@@ -1,4 +1,4 @@
-package polling
+package co.coinsmith.kafka.cryptocoin.polling
 
 import java.time.Instant
 
@@ -10,9 +10,7 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
 import akka.util.ByteString
 import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
-import co.coinsmith.kafka.cryptocoin.polling.BitfinexPollingActor
 import org.apache.avro.generic.GenericRecord
-import org.json4s.JsonAST.JNothing
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 

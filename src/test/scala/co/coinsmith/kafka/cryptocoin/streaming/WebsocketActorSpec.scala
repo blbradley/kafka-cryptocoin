@@ -1,4 +1,4 @@
-package streaming
+package co.coinsmith.kafka.cryptocoin.streaming
 
 import java.time.Instant
 import javax.websocket.server.ServerEndpoint
@@ -6,7 +6,6 @@ import javax.websocket.{OnMessage, Session}
 
 import akka.actor.ActorSystem
 import akka.testkit.{TestActorRef, TestKitBase, TestProbe}
-import co.coinsmith.kafka.cryptocoin.streaming.{Connect, WebsocketActor}
 import org.glassfish.tyrus.test.tools.TestContainer
 import org.json4s.JsonAST.JObject
 import org.json4s.JsonDSL.WithBigDecimal._
