@@ -59,7 +59,6 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
     case (t, JObject(JField("event", JString("subscribed")) ::
                      JField("channel", JString(channelName)) ::
                      JField("chanId", JInt(channelId)) ::
-                     JField("pair", JString("BTCUSD")) ::
                      xs)) =>
       log.info("Received subscription event response for channel {} with ID {}", channelName, channelId)
       subscribed += (channelId -> channelName)
