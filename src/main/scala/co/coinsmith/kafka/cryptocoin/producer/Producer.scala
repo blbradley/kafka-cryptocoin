@@ -14,6 +14,7 @@ object Producer {
   props.put("bootstrap.servers", brokers)
   props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "io.confluent.kafka.serializers.KafkaAvroSerializer")
   props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "io.confluent.kafka.serializers.KafkaAvroSerializer")
+  props.put("acks", "all")
   props.put("schema.registry.url", schemaRegistryUrl)
   val producer = new KafkaProducer[Object, Object](props)
 
