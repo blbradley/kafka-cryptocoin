@@ -9,8 +9,16 @@ Kafka producer for data collection from cryptocurrency exchanges
 Configuration
 -------------
 
+###Environment Variables
+
 * `KAFKA_CRYPTOCOIN_BOOTSTRAP_SERVERS`: Comma separated list of Kafka brokers. Port is required.
 * `KAFKA_CRYPTOCOIN_SCHEMA_REGISTRY_URL`: URL for Kafka Schema Registry
+
+###application.conf
+
+Main config is at `kafka.cryptocoin`.
+
+* `exchanges`: List of enabled exchanges. Default is all supported exchanges.
 
 
 Kafka
