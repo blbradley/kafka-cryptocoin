@@ -3,7 +3,8 @@ package co.coinsmith.kafka.cryptocoin.streaming
 import java.net.URI
 import java.time.Instant
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.SupervisorStrategy.Escalate
+import akka.actor.{Actor, ActorLogging, AllForOneStrategy, Props}
 import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick, Trade}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import org.json4s.DefaultFormats
@@ -106,6 +107,11 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
 class BitfinexStreamingActor extends Actor with ActorLogging with ProducerBehavior {
   val topicPrefix = "bitfinex.streaming.btcusd."
   val uri = new URI("wss://api2.bitfinex.com:3000/ws")
+
+  override val supervisorStrategy = AllForOneStrategy() {
+    case _: Exception => Escalate
+    case t => super.supervisorStrategy.decider.applyOrElse(t, (_: Any) => Escalate)
+  }
 
   val websocket = context.actorOf(WebsocketActor.props(uri))
   val protocol = context.actorOf(Props[BitfinexWebsocketProtocol])
