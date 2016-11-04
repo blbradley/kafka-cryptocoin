@@ -6,8 +6,7 @@ import javax.websocket.MessageHandler.Whole
 import javax.websocket._
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import org.glassfish.tyrus.client.{ClientManager, ClientProperties}
-import org.glassfish.tyrus.client.ClientManager.ReconnectHandler
+import org.glassfish.tyrus.client.ClientManager
 import org.json4s.jackson.JsonMethods._
 
 
@@ -43,16 +42,6 @@ class WebsocketActor(uri: URI) extends Actor with ActorLogging {
       throw thr
     }
   }
-
-  val reconnectHandler = new ReconnectHandler {
-    override def onDisconnect(closeReason: CloseReason): Boolean = true
-
-    override def onConnectFailure(exception: Exception): Boolean = {
-      throw exception
-      true
-    }
-  }
-  client.getProperties.put(ClientProperties.RECONNECT_HANDLER, reconnectHandler)
 
   def connect = {
     client.connectToServer(endpoint, cec, uri)
