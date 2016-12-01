@@ -105,7 +105,7 @@ class OKCoinStreamingActor extends Actor with ActorLogging with ProducerBehavior
   val topicPrefix = "okcoin.streaming.btcusd."
   val uri = new URI("wss://real.okcoin.cn:10440/websocket/okcoinapi")
 
-  val websocket = context.actorOf(WebsocketActor.props(uri))
+  val websocket = context.actorOf(TyrusWebsocketActor.props(uri))
   val protocol = context.actorOf(Props[OKCoinWebsocketProtocol])
 
   val channels = List(

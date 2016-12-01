@@ -18,15 +18,15 @@ class EchoEndpoint {
   def onMessage(message: String, session: Session) = message
 }
 
-class WebsocketActorSpec extends TestContainer with TestKitBase with FlatSpecLike {
-  implicit lazy val system = ActorSystem("WebsocketActorSpecSystem")
+class TyrusWebsocketActorSpec extends TestContainer with TestKitBase with FlatSpecLike {
+  implicit lazy val system = ActorSystem("TyrusWebsocketActorSpecSystem")
 
   val serverEndpoint = new EchoEndpoint
   val uri = getURI(serverEndpoint.getClass)
 
-  "WebsocketActor" should "forward received messages to receiver" in {
+  "TyrusWebsocketActor" should "forward received messages to receiver" in {
     val server = startServer(serverEndpoint.getClass)
-    val actorRef = TestActorRef(WebsocketActor.props(uri))
+    val actorRef = TestActorRef(TyrusWebsocketActor.props(uri))
     val probe = TestProbe("probe")
 
     val json = List.empty

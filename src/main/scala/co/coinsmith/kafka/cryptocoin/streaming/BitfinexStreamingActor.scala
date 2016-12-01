@@ -113,7 +113,7 @@ class BitfinexStreamingActor extends Actor with ActorLogging with ProducerBehavi
     case t => super.supervisorStrategy.decider.applyOrElse(t, (_: Any) => Escalate)
   }
 
-  val websocket = context.actorOf(WebsocketActor.props(uri))
+  val websocket = context.actorOf(TyrusWebsocketActor.props(uri))
   val protocol = context.actorOf(Props[BitfinexWebsocketProtocol])
 
   val channels = List(
