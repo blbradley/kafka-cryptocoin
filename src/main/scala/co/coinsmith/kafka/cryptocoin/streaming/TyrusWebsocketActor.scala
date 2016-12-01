@@ -10,7 +10,7 @@ import org.glassfish.tyrus.client.ClientManager
 import org.json4s.jackson.JsonMethods._
 
 
-class WebsocketActor(uri: URI) extends Actor with ActorLogging {
+class TyrusWebsocketActor(uri: URI) extends Actor with ActorLogging {
   var remote: RemoteEndpoint.Async = _
   var receiver : ActorRef = _
 
@@ -55,6 +55,6 @@ class WebsocketActor(uri: URI) extends Actor with ActorLogging {
   }
 }
 
-object WebsocketActor {
-  def props(uri: URI) = Props(new WebsocketActor(uri))
+object TyrusWebsocketActor {
+  def props(uri: URI) = Props(new TyrusWebsocketActor(uri))
 }
