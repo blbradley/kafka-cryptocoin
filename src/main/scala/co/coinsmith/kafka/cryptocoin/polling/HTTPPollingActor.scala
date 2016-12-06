@@ -32,8 +32,7 @@ abstract class HTTPPollingActor extends Actor with ActorLogging {
 
   def responseEntityToString(entity: ResponseEntity): Future[String] =
     entity.toStrict(500 millis) map { _.data.utf8String }
-
-
+  
   def convertFlow[T : Manifest] = Flow[(Instant, ResponseEntity)].mapAsync(1) { case (t, entity) =>
     responseEntityToString(entity)
       .map(s => parse(s))
