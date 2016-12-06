@@ -1,6 +1,6 @@
 package co.coinsmith.kafka.cryptocoin.polling
 
-import scala.concurrent.Await
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 import java.time.Instant
@@ -11,6 +11,7 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse, ResponseEntity}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import org.json4s.DefaultFormats
+import org.json4s.jackson.JsonMethods._
 
 
 abstract class HTTPPollingActor extends Actor with ActorLogging {
@@ -29,9 +30,14 @@ abstract class HTTPPollingActor extends Actor with ActorLogging {
       throw new Exception(s"Request failed with response ${response}")
   }
 
-  def responseEntityToString(entity: ResponseEntity) = {
-    val data = entity.toStrict(500 millis) map { _.data.utf8String }
-    Await.result(data, 500 millis)
+  def responseEntityToString(entity: ResponseEntity): Future[String] =
+    entity.toStrict(500 millis) map { _.data.utf8String }
+  
+  def convertFlow[T : Manifest] = Flow[(Instant, ResponseEntity)].mapAsync(1) { case (t, entity) =>
+    responseEntityToString(entity)
+      .map(s => parse(s))
+      .map(json => json.extract[T])
+      .map((t, _))
   }
 
   val selfSink = Sink.actorRef(self, None)

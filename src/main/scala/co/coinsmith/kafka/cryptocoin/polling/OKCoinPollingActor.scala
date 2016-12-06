@@ -3,11 +3,9 @@ package co.coinsmith.kafka.cryptocoin.polling
 import java.time.Instant
 
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.ResponseEntity
 import akka.stream.scaladsl.Flow
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
-import org.json4s.jackson.JsonMethods._
 
 case class OKCoinPollingTick(
   buy: String,
@@ -46,29 +44,25 @@ class OKCoinPollingActor extends HTTPPollingActor with ProducerBehavior {
   val topicPrefix = "okcoin.polling.btcusd."
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("www.okcoin.cn")
 
-  val tickFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
+  val tickFlow = Flow[(Instant, OKCoinPollingDatedTick)].map { case (t, tick) =>
     implicit val timeCollected = t
-    val msg = parse(responseEntityToString(entity))
-    val tick = msg.extract[OKCoinPollingDatedTick]
-
     ("ticks", Tick.format.to(tick))
   }
 
-  val orderbookFlow = Flow[(Instant, ResponseEntity)].map { case (t, entity) =>
+  val orderbookFlow = Flow[(Instant, OKCoinPollingOrderBook)].map { case (t, ob) =>
     implicit val timeCollected = t
-    val msg = parse(responseEntityToString(entity))
-    val ob = msg.extract[OKCoinPollingOrderBook]
-
     ("orderbook", OrderBook.format.to(ob))
   }
 
   def receive = periodicBehavior orElse producerBehavior orElse {
     case "tick" =>
       request("/api/v1/ticker.do?symbol=btc_cny")
+        .via(convertFlow[OKCoinPollingDatedTick])
         .via(tickFlow)
         .runWith(selfSink)
     case "orderbook" =>
       request("/api/v1/depth.do??symbol=btc_cny")
+        .via(convertFlow[OKCoinPollingOrderBook])
         .via(orderbookFlow)
         .runWith(selfSink)
   }

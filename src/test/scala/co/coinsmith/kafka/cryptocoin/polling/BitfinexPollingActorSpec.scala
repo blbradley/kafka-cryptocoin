@@ -29,9 +29,6 @@ class BitfinexPollingActorSpec
       ("bid" -> "464.8") ~
       ("ask" -> "464.89") ~
       ("last_price" -> "464.9") ~
-      ("low" -> "452.96") ~
-      ("high" -> "466.99") ~
-      ("volume" -> "26373.95835286") ~
       ("timestamp" -> "1461608354.095383854")
     val contentType = ContentTypes.`application/json`
     val data = ByteString(compact(render(json)))
@@ -40,6 +37,7 @@ class BitfinexPollingActorSpec
     val expected = Tick(464.9, 464.8, 464.89, timeCollected, timestamp = Some(timestamp))
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
+      .via(actor.convertFlow[BitfinexPollingTick])
       .via(actor.tickFlow)
       .toMat(TestSink.probe[(String, GenericRecord)])(Keep.both)
       .run
@@ -75,6 +73,7 @@ class BitfinexPollingActorSpec
     val expected = OrderBook(bids, asks, timeCollected = Some(timeCollected))
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
+      .via(actor.convertFlow[BitfinexPollingOrderBook])
       .via(actor.orderbookFlow)
       .toMat(TestSink.probe[(String, GenericRecord)])(Keep.both)
       .run

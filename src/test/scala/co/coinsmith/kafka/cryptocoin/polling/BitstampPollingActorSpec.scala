@@ -46,6 +46,7 @@ class BitstampPollingActorSpec
     )
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
+      .via(actor.convertFlow[BitstampPollingTick])
       .via(actor.tickFlow)
       .toMat(TestSink.probe[(String, GenericRecord)])(Keep.both)
       .run
@@ -84,6 +85,7 @@ class BitstampPollingActorSpec
     val expected = OrderBook(bids, asks, Some(Instant.ofEpochSecond(timestamp)), Some(timeCollected))
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
+      .via(actor.convertFlow[BitstampPollingOrderBook])
       .via(actor.orderbookFlow)
       .toMat(TestSink.probe[(String, GenericRecord)])(Keep.both)
       .run
