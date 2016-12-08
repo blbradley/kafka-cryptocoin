@@ -1,14 +1,18 @@
 package co.coinsmith.kafka.cryptocoin.streaming
 
+import java.time.Instant
+
 import akka.actor.ActorSystem
 import akka.testkit.{EventFilter, TestActorRef}
 import org.json4s.JsonDSL.WithBigDecimal._
 
 
 class BitfinexWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSystem("BitfinexWebsocketProtocolSpecSystem")) {
-  val actorRef = TestActorRef[BitfinexWebsocketProtocol]
+  "BitfinexWebsocketProtocol" should "have a channel after subscription message" in {
+    val actorRef = TestActorRef[BitfinexWebsocketProtocol]
+    val actor = actorRef.underlyingActor
 
-  "BitfinexWebsocketProtocol" should "log subscription of a channel" in {
+    val timeCollected = Instant.ofEpochSecond(10L)
     val msg = ("event" -> "subscribed") ~
       ("channel" ->"book") ~
       ("chanId" -> 67) ~
@@ -16,6 +20,8 @@ class BitfinexWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSyste
       ("freq" -> "F0") ~
       ("len" -> "100") ~
       ("pair" -> "BTCUSD")
-    EventFilter.info("Received subscription event response for channel book with ID 67")
+
+    actorRef ! (timeCollected, msg)
+    assert(actor.subscribed == Map(BigInt(67) -> "book"))
   }
 }
