@@ -24,4 +24,16 @@ class BitfinexWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSyste
     actorRef ! (timeCollected, msg)
     assert(actor.subscribed == Map(BigInt(67) -> "book"))
   }
+
+  it should "throw an exception on info event with code 20051" in {
+    val actorRef = TestActorRef[BitfinexWebsocketProtocol]
+    val actor = actorRef.underlyingActor
+
+    val timeCollected = Instant.ofEpochSecond(10L)
+    val msg = ("event" -> "info") ~
+      ("code" -> 20051) ~
+      ("msg" -> "Stopping. Please try to reconnect")
+
+    intercept[Exception] { actorRef.receive((timeCollected, msg)) }
+  }
 }
