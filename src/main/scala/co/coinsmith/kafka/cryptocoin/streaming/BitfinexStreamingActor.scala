@@ -13,6 +13,8 @@ import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
 
+case class BitfinexRestartException(message: String) extends Exception(message)
+
 class BitfinexWebsocketProtocol extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
 
@@ -60,7 +62,7 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
     val JObject(JField("event", JString(name)) :: data) = event
     (name, data) match {
       case ("info", ("code", JInt(code)) :: ("msg", JString(msg)) :: Nil) if code == 20051 =>
-        throw new Exception(s"Bitfinex requested reconnection with message: $msg")
+        throw new BitfinexRestartException(msg)
       case _ =>
         log.info("Received event message: {}", compact(render(event)))
     }

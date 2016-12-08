@@ -13,7 +13,7 @@ class BitfinexWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSyste
     val actor = actorRef.underlyingActor
 
     val timeCollected = Instant.ofEpochSecond(10L)
-    val msg = ("event" -> "subscribed") ~
+    val json = ("event" -> "subscribed") ~
       ("channel" ->"book") ~
       ("chanId" -> 67) ~
       ("prec" -> "R0") ~
@@ -21,7 +21,7 @@ class BitfinexWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSyste
       ("len" -> "100") ~
       ("pair" -> "BTCUSD")
 
-    actorRef ! (timeCollected, msg)
+    actorRef ! (timeCollected, json)
     assert(actor.subscribed == Map(BigInt(67) -> "book"))
   }
 
@@ -30,10 +30,11 @@ class BitfinexWebsocketProtocolSpec extends ExchangeProtocolActorSpec(ActorSyste
     val actor = actorRef.underlyingActor
 
     val timeCollected = Instant.ofEpochSecond(10L)
-    val msg = ("event" -> "info") ~
+    val json = ("event" -> "info") ~
       ("code" -> 20051) ~
       ("msg" -> "Stopping. Please try to reconnect")
 
-    intercept[Exception] { actorRef.receive((timeCollected, msg)) }
+    val msg = (timeCollected, json)
+    intercept[BitfinexRestartException](actorRef.receive(msg)).getMessage should include("Stopping. Please try to reconnect")
   }
 }
