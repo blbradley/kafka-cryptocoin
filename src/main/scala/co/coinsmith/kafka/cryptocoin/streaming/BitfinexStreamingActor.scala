@@ -13,6 +13,8 @@ import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
 
+case class BitfinexRestartException(message: String) extends Exception(message)
+
 class BitfinexWebsocketProtocol extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
 
@@ -56,6 +58,16 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
     case _ => throw new Exception(s"Trade snapshot processing error for $trade")
   }
 
+  def handleEvent(event: JObject) = {
+    val JObject(JField("event", JString(name)) :: data) = event
+    (name, data) match {
+      case ("info", ("code", JInt(code)) :: ("msg", JString(msg)) :: Nil) if code == 20051 =>
+        throw new BitfinexRestartException(msg)
+      case _ =>
+        log.info("Received event message: {}", compact(render(event)))
+    }
+  }
+
   def receive = {
     case (t, JObject(JField("event", JString("subscribed")) ::
                      JField("channel", JString(channelName)) ::
@@ -63,8 +75,8 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
                      xs)) =>
       log.info("Received subscription event response for channel {} with ID {}", channelName, channelId)
       subscribed += (channelId -> channelName)
-    case (t, event: JValue) if isEvent(event) =>
-      log.info("Received event message: {}", compact(render(event)))
+    case (t, event: JObject) if isEvent(event) =>
+      handleEvent(event)
     case (t: Instant, JArray(JInt(channelId) :: JString("hb") :: Nil)) =>
       log.debug("Received heartbeat message for channel ID {}", channelId)
     case (t: Instant, JArray(JInt(channelId) :: JArray(data) :: Nil)) =>
