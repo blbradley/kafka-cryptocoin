@@ -4,6 +4,7 @@ import java.net.URI
 import java.time._
 
 import akka.actor.{Actor, ActorLogging, Props}
+import akka.http.scaladsl.model.ws.TextMessage
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick, Trade}
 import org.json4s.DefaultFormats
@@ -102,25 +103,20 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
 }
 
 class OKCoinStreamingActor extends Actor with ActorLogging with ProducerBehavior {
+  implicit val actorSystem = context.system
+
   val topicPrefix = "okcoin.streaming.btcusd."
   val uri = new URI("wss://real.okcoin.cn:10440/websocket/okcoinapi")
-
-  val websocket = context.actorOf(TyrusWebsocketActor.props(uri))
-  val protocol = context.actorOf(Props[OKCoinWebsocketProtocol])
 
   val channels = List(
     ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_ticker"),
     ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_depth_60"),
     ("event" -> "addChannel") ~ ("channel" -> "ok_sub_spotcny_btc_trades")
   )
-  val initMessage = compact(render(channels))
+  val messages = List(TextMessage(compact(render(channels))))
 
-  override def preStart = {
-    websocket ! self
-    websocket ! Connect
-    websocket ! initMessage
-    log.debug("Sent initialization message: {}", initMessage)
-  }
+  val websocket = new AkkaWebsocket(uri, messages, self)
+  val protocol = context.actorOf(Props[OKCoinWebsocketProtocol])
 
   def receive = producerBehavior orElse {
     case (t: Instant, json: JValue) => protocol ! (t, json)

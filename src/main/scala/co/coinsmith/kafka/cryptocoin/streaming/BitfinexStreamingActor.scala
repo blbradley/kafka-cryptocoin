@@ -5,6 +5,7 @@ import java.time.Instant
 
 import akka.actor.SupervisorStrategy.Escalate
 import akka.actor.{Actor, ActorLogging, AllForOneStrategy, Props}
+import akka.http.scaladsl.model.ws.TextMessage
 import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick, Trade}
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import org.json4s.DefaultFormats
@@ -105,6 +106,8 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
 }
 
 class BitfinexStreamingActor extends Actor with ActorLogging with ProducerBehavior {
+  implicit val actorSystem = context.system
+
   val topicPrefix = "bitfinex.streaming.btcusd."
   val uri = new URI("wss://api2.bitfinex.com:3000/ws")
 
@@ -113,25 +116,16 @@ class BitfinexStreamingActor extends Actor with ActorLogging with ProducerBehavi
     case t => super.supervisorStrategy.decider.applyOrElse(t, (_: Any) => Escalate)
   }
 
-  val websocket = context.actorOf(TyrusWebsocketActor.props(uri))
-  val protocol = context.actorOf(Props[BitfinexWebsocketProtocol])
-
   val channels = List(
     ("event" -> "subscribe") ~ ("channel" -> "book") ~ ("pair" -> "BTCUSD")
       ~ ("prec" -> "R0") ~ ("len" -> "100"),
     ("event" -> "subscribe") ~ ("channel" -> "trades") ~ ("pair" -> "BTCUSD"),
     ("event" -> "subscribe") ~ ("channel" -> "ticker") ~ ("pair" -> "BTCUSD")
   )
+  val messages = channels.map(j => compact(render(j))).map(s => TextMessage(s))
 
-  override def preStart = {
-    websocket ! self
-    websocket ! Connect
-    for (channel <- channels) {
-      val msg = compact(render(channel))
-      websocket ! msg
-      log.debug("Sent subscription message: {}", msg)
-    }
-  }
+  val websocket = new AkkaWebsocket(uri, messages, self)
+  val protocol = context.actorOf(Props[BitfinexWebsocketProtocol])
 
   def receive = producerBehavior orElse {
     case (t: Instant, json: JValue) => protocol ! (t, json)
