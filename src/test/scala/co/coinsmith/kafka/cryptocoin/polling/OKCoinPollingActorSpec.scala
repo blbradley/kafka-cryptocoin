@@ -44,6 +44,7 @@ class OKCoinPollingActorSpec
     )
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
+      .via(actor.convertFlow[OKCoinPollingDatedTick])
       .via(actor.tickFlow)
       .toMat(TestSink.probe[(String, GenericRecord)])(Keep.both)
       .run
@@ -80,6 +81,7 @@ class OKCoinPollingActorSpec
     val expected = OrderBook(bids, asks, timeCollected = Some(timeCollected))
 
     val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
+      .via(actor.convertFlow[OKCoinPollingOrderBook])
       .via(actor.orderbookFlow)
       .toMat(TestSink.probe[(String, GenericRecord)])(Keep.both)
       .run
