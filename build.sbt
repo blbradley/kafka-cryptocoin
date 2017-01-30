@@ -13,13 +13,10 @@ libraryDependencies += "org.apache.kafka" % "kafka-clients" % "0.10.0.1-cp1"
 libraryDependencies += "io.confluent" % "kafka-avro-serializer" % "3.0.1" classifier ""
 libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.5.0"
 libraryDependencies += "com.sksamuel.avro4s" %% "avro4s-core" % "1.6.2"
-libraryDependencies += "org.glassfish.tyrus.bundles" % "tyrus-standalone-client-jdk" % "1.13"
-libraryDependencies += "org.glassfish.tyrus" % "tyrus-container-grizzly-client" % "1.13"
 libraryDependencies += "com.pusher" % "pusher-java-client" % "1.2.1"
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.6" % "test",
-  "org.glassfish.tyrus.tests" % "tyrus-test-tools" % "1.13" % "test",
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test",
   "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % "test"
 )
