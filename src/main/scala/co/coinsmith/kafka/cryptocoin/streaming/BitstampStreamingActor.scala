@@ -50,6 +50,8 @@ object BitstampStreamingOrderBook {
     )
 }
 
+case class PusherEvent(channelName: String, eventName: String, timestamp: Instant, msg: String)
+
 class BitstampPusherActor extends Actor with ActorLogging {
   var receiver: ActorRef = _
 
@@ -75,7 +77,7 @@ class BitstampPusherActor extends Actor with ActorLogging {
     override def onEvent(channelName: String, eventName: String, data: String) = {
       val timeCollected = Instant.now
       log.debug("Received event {} on channel {}: {}", channelName, eventName, data)
-      receiver ! (channelName, eventName, timeCollected, parse(data))
+      receiver ! PusherEvent(channelName, eventName, timeCollected, data)
     }
   }
 
@@ -97,6 +99,7 @@ class BitstampPusherProtocol extends Actor {
   implicit val formats = DefaultFormats
 
   def receive =  {
+    case pe: PusherEvent => self forward (pe.channelName, pe.eventName, pe.timestamp, parse(pe.msg))
     case ("live_trades", "trade", t: Instant, json: JValue) =>
       implicit val timeCollected = t
       // some json processing required due to 'type' as a key name
@@ -129,7 +132,6 @@ class BitstampStreamingActor extends Actor with ActorLogging {
   def receive = {
     case (topic: String, value: Object) =>
       Producer.send(topicPrefix + topic, value)
-    case (channelName: String, eventName: String, t: Instant, json: JValue) =>
-      protocol ! (channelName, eventName, t, json)
+    case pe : PusherEvent => protocol ! pe
   }
 }
