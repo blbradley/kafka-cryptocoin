@@ -8,6 +8,7 @@ import co.coinsmith.kafka.cryptocoin.producer.Producer
 import com.pusher.client.Pusher
 import com.pusher.client.channel.ChannelEventListener
 import com.pusher.client.connection.{ConnectionEventListener, ConnectionState, ConnectionStateChange}
+import com.sksamuel.avro4s.RecordFormat
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
@@ -51,6 +52,9 @@ object BitstampStreamingOrderBook {
 }
 
 case class PusherEvent(channelName: String, eventName: String, timestamp: Instant, msg: String)
+object PusherEvent {
+  val format = RecordFormat[PusherEvent]
+}
 
 class BitstampPusherActor extends Actor with ActorLogging {
   var receiver: ActorRef = _
@@ -132,6 +136,9 @@ class BitstampStreamingActor extends Actor with ActorLogging {
   def receive = {
     case (topic: String, value: Object) =>
       Producer.send(topicPrefix + topic, value)
-    case pe : PusherEvent => protocol ! pe
+    case pe : PusherEvent =>
+      Producer.send("streaming.pusher.raw", "bitstamp", PusherEvent.format.to(pe))
+
+      protocol ! pe
   }
 }
