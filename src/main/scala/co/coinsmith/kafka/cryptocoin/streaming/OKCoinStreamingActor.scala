@@ -119,6 +119,6 @@ class OKCoinStreamingActor extends Actor with ActorLogging with ProducerBehavior
   val protocol = context.actorOf(Props[OKCoinWebsocketProtocol])
 
   def receive = producerBehavior orElse {
-    case (t: Instant, json: JValue) => protocol ! (t, json)
+    case (t: Instant, msg: String) => protocol ! (t, parse(msg))
   }
 }

@@ -128,6 +128,6 @@ class BitfinexStreamingActor extends Actor with ActorLogging with ProducerBehavi
   val protocol = context.actorOf(Props[BitfinexWebsocketProtocol])
 
   def receive = producerBehavior orElse {
-    case (t: Instant, json: JValue) => protocol ! (t, json)
+    case (t: Instant, msg: String) => protocol ! (t, parse(msg))
   }
 }
