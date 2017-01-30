@@ -5,7 +5,7 @@ import java.time._
 
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.http.scaladsl.model.ws.TextMessage
-import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
+import co.coinsmith.kafka.cryptocoin.producer.Producer
 import co.coinsmith.kafka.cryptocoin._
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
@@ -102,7 +102,7 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
   }
 }
 
-class OKCoinStreamingActor extends Actor with ActorLogging with ProducerBehavior {
+class OKCoinStreamingActor extends Actor with ActorLogging {
   implicit val actorSystem = context.system
 
   val topicPrefix = "okcoin.streaming.btcusd."
@@ -118,11 +118,13 @@ class OKCoinStreamingActor extends Actor with ActorLogging with ProducerBehavior
   val websocket = new AkkaWebsocket(uri, messages, self)
   val protocol = context.actorOf(Props[OKCoinWebsocketProtocol])
 
-  def receive = producerBehavior orElse {
+  def receive = {
+    case (topic: String, value: Object) =>
+      Producer.send(topicPrefix + topic, value)
     case (t: Instant, msg: String) =>
       val exchange = "okcoin"
       val event = ExchangeEvent(t, exchange, msg)
-      self ! ("streaming.raw", exchange, ExchangeEvent.format.to(event))
+      Producer.send("streaming.raw", exchange, ExchangeEvent.format.to(event))
 
       protocol ! (t, parse(msg))
   }
