@@ -4,6 +4,7 @@ import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Trade}
+import co.coinsmith.kafka.cryptocoin.avro.InstantTypeMaps._
 import co.coinsmith.kafka.cryptocoin.producer.Producer
 import com.pusher.client.Pusher
 import com.pusher.client.channel.ChannelEventListener
