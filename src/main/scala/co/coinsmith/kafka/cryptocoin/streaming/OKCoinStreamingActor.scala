@@ -124,7 +124,7 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
     case (t: Instant, msg: String) =>
       val exchange = "okcoin"
       val event = ExchangeEvent(t, exchange, msg)
-      Producer.send("streaming.raw", exchange, ExchangeEvent.format.to(event))
+      Producer.send("streaming.websocket.raw", exchange, ExchangeEvent.format.to(event))
 
       protocol ! (t, parse(msg))
   }
