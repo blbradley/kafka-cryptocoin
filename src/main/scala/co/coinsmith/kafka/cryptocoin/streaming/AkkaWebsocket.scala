@@ -22,7 +22,7 @@ class AkkaWebsocket(uri: URI, messages: List[TextMessage], receiver: ActorRef)(i
   val source: Source[Message, Promise[Option[Message]]] =
     Source(messages).concatMat(Source.maybe[Message])(Keep.right)
 
-  val receiverSink = Sink.foreach[(Instant, JValue)] { receiver ! _ }
+  val receiverSink = Sink.foreach[(Instant, String)] { receiver ! _ }
 
   val websocketFlow: Flow[Message, Message, (Future[Done], Promise[Option[Message]])] =
     Flow.fromGraph(GraphDSL.create(receiverSink, source)((_,_)) { implicit b =>
@@ -30,11 +30,11 @@ class AkkaWebsocket(uri: URI, messages: List[TextMessage], receiver: ActorRef)(i
         import GraphDSL.Implicits._
 
         val bcast = b.add(Broadcast[Message](2))
-        val zip = b.add(Zip[Instant, JValue]())
+        val zip = b.add(Zip[Instant, String]())
         val stringFlow = b.add(Flow[Message].mapAsync(1)(messageToString))
 
-        bcast.out(0) ~> Flow[Message].map(_ => Instant.now)           ~> zip.in0
-        bcast.out(1) ~> stringFlow ~> Flow[String].map(s => parse(s)) ~> zip.in1
+        bcast.out(0) ~> Flow[Message].map(_ => Instant.now) ~> zip.in0
+        bcast.out(1) ~> stringFlow                          ~> zip.in1
 
         zip.out ~> sink
 
