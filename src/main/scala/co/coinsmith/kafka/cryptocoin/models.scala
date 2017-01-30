@@ -7,6 +7,11 @@ import co.coinsmith.kafka.cryptocoin.avro.GlobalScaleAndPrecision._
 import com.sksamuel.avro4s.RecordFormat
 
 
+case class ExchangeEvent(timestamp: Instant, exchange: String, data: String)
+object ExchangeEvent {
+  val format = RecordFormat[ExchangeEvent]
+}
+
 case class Tick(last: BigDecimal, bid: BigDecimal, ask: BigDecimal, timeCollected: Instant,
                 high: Option[BigDecimal] = None, low: Option[BigDecimal] = None, open: Option[BigDecimal] = None,
                 volume: Option[BigDecimal] = None, vwap: Option[BigDecimal] = None,

@@ -11,8 +11,10 @@ trait ProducerBehavior {
   val topicPrefix: String
 
   val producerBehavior: Receive = {
-    case (topic: String, obj: Object) =>
-      Producer.send(topicPrefix + topic, obj)
+    case (topic: String, key: Object, value: Object) =>
+      Producer.send(topic, key, value)
+    case (topic: String, value: Object) =>
+      Producer.send(topicPrefix + topic, value)
   }
 
 }

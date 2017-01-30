@@ -6,7 +6,7 @@ import java.time.Instant
 import akka.actor.SupervisorStrategy.Escalate
 import akka.actor.{Actor, ActorLogging, AllForOneStrategy, Props}
 import akka.http.scaladsl.model.ws.TextMessage
-import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick, Trade}
+import co.coinsmith.kafka.cryptocoin._
 import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
@@ -128,6 +128,11 @@ class BitfinexStreamingActor extends Actor with ActorLogging with ProducerBehavi
   val protocol = context.actorOf(Props[BitfinexWebsocketProtocol])
 
   def receive = producerBehavior orElse {
-    case (t: Instant, msg: String) => protocol ! (t, parse(msg))
+    case (t: Instant, msg: String) =>
+      val exchange = "bitfinex"
+      val event = ExchangeEvent(t, exchange, msg)
+      self ! ("streaming.raw", exchange, ExchangeEvent.format.to(event))
+
+      protocol ! (t, parse(msg))
   }
 }

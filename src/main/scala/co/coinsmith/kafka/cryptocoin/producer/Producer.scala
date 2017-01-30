@@ -18,8 +18,13 @@ object Producer {
   props.put("schema.registry.url", schemaRegistryUrl)
   val producer = new KafkaProducer[Object, Object](props)
 
-  def send(topic: String, msg: Object) {
-    val data = new ProducerRecord[Object, Object](topic, msg)
+  def send(topic: String, key: Object, value: Object) = {
+    val data = new ProducerRecord[Object, Object](topic, key, value)
+    producer.send(data)
+  }
+
+  def send(topic: String, value: Object) {
+    val data = new ProducerRecord[Object, Object](topic, value)
     producer.send(data)
   }
 }
