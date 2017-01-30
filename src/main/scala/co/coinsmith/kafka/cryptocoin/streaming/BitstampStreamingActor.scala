@@ -4,7 +4,7 @@ import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Trade}
-import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
+import co.coinsmith.kafka.cryptocoin.producer.Producer
 import com.pusher.client.Pusher
 import com.pusher.client.channel.ChannelEventListener
 import com.pusher.client.connection.{ConnectionEventListener, ConnectionState, ConnectionStateChange}
@@ -115,7 +115,7 @@ class BitstampPusherProtocol extends Actor {
   }
 }
 
-class BitstampStreamingActor extends Actor with ActorLogging with ProducerBehavior {
+class BitstampStreamingActor extends Actor with ActorLogging {
   val topicPrefix = "bitstamp.streaming.btcusd."
 
   val pusher = context.actorOf(Props[BitstampPusherActor])
@@ -126,7 +126,9 @@ class BitstampStreamingActor extends Actor with ActorLogging with ProducerBehavi
     pusher ! Connect
   }
 
-  def receive = producerBehavior orElse {
+  def receive = {
+    case (topic: String, value: Object) =>
+      Producer.send(topicPrefix + topic, value)
     case (channelName: String, eventName: String, t: Instant, json: JValue) =>
       protocol ! (channelName, eventName, t, json)
   }

@@ -4,7 +4,7 @@ import java.time.Instant
 
 import akka.http.scaladsl.Http
 import akka.stream.scaladsl.Flow
-import co.coinsmith.kafka.cryptocoin.producer.ProducerBehavior
+import co.coinsmith.kafka.cryptocoin.producer.Producer
 import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
 
 case class OKCoinPollingTick(
@@ -40,7 +40,7 @@ object OKCoinPollingOrderBook {
     )
 }
 
-class OKCoinPollingActor extends HTTPPollingActor with ProducerBehavior {
+class OKCoinPollingActor extends HTTPPollingActor {
   val topicPrefix = "okcoin.polling.btcusd."
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("www.okcoin.cn")
 
@@ -54,7 +54,9 @@ class OKCoinPollingActor extends HTTPPollingActor with ProducerBehavior {
     ("orderbook", OrderBook.format.to(ob))
   }
 
-  def receive = periodicBehavior orElse producerBehavior orElse {
+  def receive = periodicBehavior orElse {
+    case (topic: String, value: Object) =>
+      Producer.send(topicPrefix + topic, value)
     case "tick" =>
       request("/api/v1/ticker.do?symbol=btc_cny")
         .via(convertFlow[OKCoinPollingDatedTick])
