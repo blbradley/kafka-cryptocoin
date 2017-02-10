@@ -6,6 +6,7 @@ import java.time.Instant
 
 import akka.Done
 import akka.actor.{ActorRef, ActorSystem}
+import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest}
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Sink, Source, Zip}
@@ -17,6 +18,8 @@ import org.json4s.jackson.JsonMethods.parse
 class AkkaWebsocket(uri: URI, messages: List[TextMessage], receiver: ActorRef)(implicit system: ActorSystem) {
   implicit val ec = system.dispatcher
   implicit val materializer = ActorMaterializer()
+  val log = Logging(system.eventStream, this.getClass.getName)
+  var promise: Promise[Option[Message]] = _
 
   // emit initial message and then keep the connection open
   val source: Source[Message, Promise[Option[Message]]] =
@@ -41,12 +44,19 @@ class AkkaWebsocket(uri: URI, messages: List[TextMessage], receiver: ActorRef)(i
         FlowShape(bcast.in, source.out)
     })
 
-  val (upgradeResponse, (closed, promise)) =
-    Http().singleWebSocketRequest(
-      WebSocketRequest(uri.toString),
-      websocketFlow)
+  def connect: Unit = {
+    val (upgradeResponse, (sinkClosed, promise)) =
+      Http().singleWebSocketRequest(
+        WebSocketRequest(uri.toString),
+        websocketFlow)
 
-  closed.foreach(_ => throw new Exception("Websocket disconnected."))
+    this.promise = promise
+    sinkClosed.onComplete { _ =>
+      log.info("Reconnecting in five seconds to {}", uri)
+      Thread.sleep(5000)
+      connect
+    }
+  }
 
   def messageToString(m: Message)(implicit ec: ExecutionContext): Future[String] = m match {
     case TextMessage.Strict(m) => Future(m)
