@@ -117,6 +117,7 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
 
   val websocket = new AkkaWebsocket(uri, messages, self)
   val protocol = context.actorOf(Props[OKCoinWebsocketProtocol])
+  websocket.connect
 
   def receive = {
     case (topic: String, value: Object) =>

@@ -126,6 +126,7 @@ class BitfinexStreamingActor extends Actor with ActorLogging {
 
   val websocket = new AkkaWebsocket(uri, messages, self)
   val protocol = context.actorOf(Props[BitfinexWebsocketProtocol])
+  websocket.connect
 
   def receive = {
     case (topic: String, value: Object) =>
