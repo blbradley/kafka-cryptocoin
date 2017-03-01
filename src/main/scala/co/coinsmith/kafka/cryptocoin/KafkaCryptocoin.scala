@@ -31,8 +31,8 @@ object KafkaCryptocoin {
 
   def main(args: Array[String]) {
     while(isSchemaRegistryAvailable == false) {
-      log.info("Retrying connection to schema registry in five seconds.")
-      Thread.sleep(5000)
+      log.info("Retrying connection to schema registry in three seconds.")
+      Thread.sleep(3000)
     }
 
     val streamingActor = system.actorOf(Props[StreamingActor], "streaming")
