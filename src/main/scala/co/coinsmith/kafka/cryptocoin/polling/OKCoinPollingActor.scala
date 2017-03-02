@@ -41,6 +41,7 @@ object OKCoinPollingOrderBook {
 }
 
 class OKCoinPollingActor extends HTTPPollingActor {
+  val exchange = "okcoin"
   val topicPrefix = "okcoin.polling.btcusd."
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("www.okcoin.cn")
 
