@@ -10,6 +10,7 @@ import com.pusher.client.Pusher
 import com.pusher.client.channel.ChannelEventListener
 import com.pusher.client.connection.{ConnectionEventListener, ConnectionState, ConnectionStateChange}
 import com.sksamuel.avro4s.RecordFormat
+import com.typesafe.config.ConfigFactory
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
@@ -126,6 +127,9 @@ class BitstampPusherProtocol extends Actor {
 class BitstampStreamingActor extends Actor with ActorLogging {
   val topicPrefix = "bitstamp.streaming.btcusd."
 
+  val conf = ConfigFactory.load
+  val preprocess = conf.getString("kafka.cryptocoin.preprocess")
+
   val pusher = context.actorOf(Props[BitstampPusherActor])
   val protocol = context.actorOf(Props[BitstampPusherProtocol])
 
@@ -140,6 +144,8 @@ class BitstampStreamingActor extends Actor with ActorLogging {
     case pe : PusherEvent =>
       Producer.send("streaming.pusher.raw", "bitstamp", PusherEvent.format.to(pe))
 
-      protocol ! pe
+      if (preprocess == true) {
+        protocol ! pe
+      }
   }
 }

@@ -8,6 +8,7 @@ import akka.actor.{Actor, ActorLogging, AllForOneStrategy, Props}
 import akka.http.scaladsl.model.ws.TextMessage
 import co.coinsmith.kafka.cryptocoin._
 import co.coinsmith.kafka.cryptocoin.producer.Producer
+import com.typesafe.config.ConfigFactory
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
@@ -16,6 +17,9 @@ import org.json4s.jackson.JsonMethods._
 
 class BitfinexWebsocketProtocol extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
+
+  val conf = ConfigFactory.load
+  val preprocess = conf.getString("kafka.cryptocoin.preprocess")
 
   var subscribed = Map.empty[BigInt, String]
   def getChannelName(channelId: BigInt) = subscribed(channelId)
@@ -68,7 +72,7 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
       log.info("Received event message: {}", compact(render(event)))
     case (t: Instant, JArray(JInt(channelId) :: JString("hb") :: Nil)) =>
       log.debug("Received heartbeat message for channel ID {}", channelId)
-    case (t: Instant, JArray(JInt(channelId) :: JArray(data) :: Nil)) =>
+    case (t: Instant, JArray(JInt(channelId) :: JArray(data) :: Nil)) if preprocess == true =>
       implicit val timeCollected = t
       getChannelName(channelId) match {
         case "book" =>
@@ -83,7 +87,7 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
           sender ! ("trades.snapshots", Trade.format.to(trade))
         }
       }
-    case (t: Instant, JArray(JInt(channelId) :: JString(updateType) :: xs)) =>
+    case (t: Instant, JArray(JInt(channelId) :: JString(updateType) :: xs)) if preprocess == true =>
       implicit val timeCollected = t
       val topic = updateType match {
         case "tu" => "trades"
@@ -91,7 +95,7 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
       }
       val trade = toTrade(JArray(xs))
       sender ! (topic, Trade.format.to(trade))
-    case (t: Instant, JArray(JInt(channelId) :: xs)) =>
+    case (t: Instant, JArray(JInt(channelId) :: xs)) if preprocess == true =>
       implicit val timeCollected = t
       getChannelName(channelId) match {
         case "book" =>

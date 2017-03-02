@@ -7,6 +7,7 @@ import akka.actor.{Actor, ActorLogging, Props}
 import akka.http.scaladsl.model.ws.TextMessage
 import co.coinsmith.kafka.cryptocoin.producer.Producer
 import co.coinsmith.kafka.cryptocoin._
+import com.typesafe.config.ConfigFactory
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
@@ -40,6 +41,9 @@ object OKCoinStreamingOrderBook {
 
 class OKCoinWebsocketProtocol extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
+
+  val conf = ConfigFactory.load
+  val preprocess = conf.getString("kafka.cryptocoin.preprocess")
 
   def adjustTimestamp(timeCollected: Instant, time: String) = {
     val zone = ZoneId.of("Asia/Shanghai")
@@ -80,7 +84,8 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
                    JField("error_code", JInt(errorCode)) :: Nil)) =>
       log.error("Adding channel {} failed at time {}. Error code {}.", channel, t, errorCode)
 
-    case (t: Instant, JObject(JField("channel", JString(channel)) :: JField("data", data) :: Nil)) =>
+    case (t: Instant, JObject(JField("channel", JString(channel)) :: JField("data", data) :: Nil))
+      if preprocess == true =>
       self forward Data(t, channel, data)
 
     case Data(t, "ok_sub_spotcny_btc_ticker", data) =>
