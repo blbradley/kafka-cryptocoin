@@ -3,13 +3,11 @@ package co.coinsmith.kafka.cryptocoin.polling
 import java.time.Instant
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, ResponseEntity}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Keep, Source}
+import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
-import akka.util.ByteString
-import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
+import co.coinsmith.kafka.cryptocoin.{ExchangeEvent, Order, OrderBook, Tick}
 import org.apache.avro.generic.GenericRecord
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
@@ -30,18 +28,17 @@ class BitfinexPollingActorSpec
       ("ask" -> "464.89") ~
       ("last_price" -> "464.9") ~
       ("timestamp" -> "1461608354.095383854")
-    val contentType = ContentTypes.`application/json`
-    val data = ByteString(compact(render(json)))
-    val entity = HttpEntity.Strict(contentType, data)
+    val data = compact(render(json))
+    val event = ExchangeEvent(timeCollected, actor.exchange, data)
 
     val expected = Tick(464.9, 464.8, 464.89, timeCollected, timestamp = Some(timestamp))
 
-    val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
+    val (pub, sub) = TestSource.probe[ExchangeEvent]
       .via(actor.convertFlow[BitfinexPollingTick])
       .via(actor.tickFlow)
       .toMat(TestSink.probe[(String, GenericRecord)])(Keep.both)
       .run
-    pub.sendNext((timeCollected, entity))
+    pub.sendNext(event)
     sub.requestNext(("ticks", Tick.format.to(expected)))
   }
 
@@ -56,9 +53,8 @@ class BitfinexPollingActorSpec
       ("price" -> "464.49") ~ ("amount" -> "4.07481358") ~ ("timestamp" -> "1461607942.0"),
       ("price" -> "464.63") ~ ("amount" -> "4.07481358") ~ ("timestamp" -> "1461607944.0")
     ))
-    val contentType = ContentTypes.`application/json`
-    val data = ByteString(compact(render(json)))
-    val entity = HttpEntity.Default(contentType, data.length, Source.single(data))
+    val data = compact(render(json))
+    val event = ExchangeEvent(timeCollected, actor.exchange, data)
 
     val bids = List(
       Order(464.11, 43.98077206, timestamp = Some(Instant.ofEpochSecond(1461607939L))),
@@ -72,12 +68,12 @@ class BitfinexPollingActorSpec
     )
     val expected = OrderBook(bids, asks, timeCollected = Some(timeCollected))
 
-    val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
+    val (pub, sub) = TestSource.probe[ExchangeEvent]
       .via(actor.convertFlow[BitfinexPollingOrderBook])
       .via(actor.orderbookFlow)
       .toMat(TestSink.probe[(String, GenericRecord)])(Keep.both)
       .run
-    pub.sendNext((timeCollected, entity))
+    pub.sendNext(event)
     sub.requestNext(("orderbook", OrderBook.format.to(expected)))
   }
 }

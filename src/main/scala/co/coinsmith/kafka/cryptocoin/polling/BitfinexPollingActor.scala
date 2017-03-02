@@ -35,6 +35,7 @@ object BitfinexPollingOrderBook {
 }
 
 class BitfinexPollingActor extends HTTPPollingActor {
+  val exchange = "bitfinex"
   val topicPrefix = "bitfinex.polling.btcusd."
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("api.bitfinex.com")
 

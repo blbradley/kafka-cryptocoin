@@ -3,13 +3,12 @@ package co.coinsmith.kafka.cryptocoin.polling
 import java.time.Instant
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, ResponseEntity}
+import akka.http.scaladsl.model.ContentTypes
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
-import akka.util.ByteString
-import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
+import co.coinsmith.kafka.cryptocoin.{ExchangeEvent, Order, OrderBook, Tick}
 import org.apache.avro.generic.GenericRecord
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
@@ -33,8 +32,8 @@ class OKCoinPollingActorSpec
         ("sell" -> "2906.63") ~
         ("vol" ->"635178.4712"))
     val contentType = ContentTypes.`text/html(UTF-8)`
-    val data = ByteString(compact(render(json)))
-    val entity = HttpEntity.Strict(contentType, data)
+    val data = compact(render(json))
+    val event = ExchangeEvent(timeCollected, actor.exchange, data)
 
     val expected = Tick(
       2906.64, 2906.58, 2906.63, timeCollected,
@@ -43,12 +42,12 @@ class OKCoinPollingActorSpec
       timestamp = Some(timestamp)
     )
 
-    val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
+    val (pub, sub) = TestSource.probe[ExchangeEvent]
       .via(actor.convertFlow[OKCoinPollingDatedTick])
       .via(actor.tickFlow)
       .toMat(TestSink.probe[(String, GenericRecord)])(Keep.both)
       .run
-    pub.sendNext((timeCollected, entity))
+    pub.sendNext(event)
     sub.requestNext(("ticks", Tick.format.to(expected)))
   }
 
@@ -63,9 +62,8 @@ class OKCoinPollingActorSpec
       List(2906.76, 0.01),
       List(2906.75, 0.082)
     ))
-    val contentType = ContentTypes.`text/html(UTF-8)`
-    val data = ByteString(compact(render(json)))
-    val entity = HttpEntity.Strict(contentType, data)
+    val data = compact(render(json))
+    val event = ExchangeEvent(timeCollected, actor.exchange, data)
 
     val bids = List(
       Order(2906.83, 1.912),
@@ -80,12 +78,12 @@ class OKCoinPollingActorSpec
 
     val expected = OrderBook(bids, asks, timeCollected = Some(timeCollected))
 
-    val (pub, sub) = TestSource.probe[(Instant, ResponseEntity)]
+    val (pub, sub) = TestSource.probe[ExchangeEvent]
       .via(actor.convertFlow[OKCoinPollingOrderBook])
       .via(actor.orderbookFlow)
       .toMat(TestSink.probe[(String, GenericRecord)])(Keep.both)
       .run
-    pub.sendNext((timeCollected, entity))
+    pub.sendNext(event)
     sub.requestNext(("orderbook", OrderBook.format.to(expected)))
   }
 }

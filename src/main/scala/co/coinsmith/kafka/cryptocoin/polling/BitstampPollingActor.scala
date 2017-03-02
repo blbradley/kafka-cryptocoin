@@ -46,6 +46,7 @@ object BitstampPollingOrderBook {
 }
 
 class BitstampPollingActor extends HTTPPollingActor {
+  val exchange = "bitstamp"
   val topicPrefix = "bitstamp.polling.btcusd."
   val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("www.bitstamp.net")
 
