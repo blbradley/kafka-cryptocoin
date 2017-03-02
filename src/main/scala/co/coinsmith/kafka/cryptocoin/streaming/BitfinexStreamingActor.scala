@@ -19,7 +19,7 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
 
   val conf = ConfigFactory.load
-  val preprocess = conf.getString("kafka.cryptocoin.preprocess")
+  val preprocess = conf.getBoolean("kafka.cryptocoin.preprocess")
 
   var subscribed = Map.empty[BigInt, String]
   def getChannelName(channelId: BigInt) = subscribed(channelId)
@@ -72,7 +72,7 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
       log.info("Received event message: {}", compact(render(event)))
     case (t: Instant, JArray(JInt(channelId) :: JString("hb") :: Nil)) =>
       log.debug("Received heartbeat message for channel ID {}", channelId)
-    case (t: Instant, JArray(JInt(channelId) :: JArray(data) :: Nil)) if preprocess == true =>
+    case (t: Instant, JArray(JInt(channelId) :: JArray(data) :: Nil)) if preprocess =>
       implicit val timeCollected = t
       getChannelName(channelId) match {
         case "book" =>
@@ -87,7 +87,7 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
           sender ! ("trades.snapshots", Trade.format.to(trade))
         }
       }
-    case (t: Instant, JArray(JInt(channelId) :: JString(updateType) :: xs)) if preprocess == true =>
+    case (t: Instant, JArray(JInt(channelId) :: JString(updateType) :: xs)) if preprocess =>
       implicit val timeCollected = t
       val topic = updateType match {
         case "tu" => "trades"
@@ -95,7 +95,7 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
       }
       val trade = toTrade(JArray(xs))
       sender ! (topic, Trade.format.to(trade))
-    case (t: Instant, JArray(JInt(channelId) :: xs)) if preprocess == true =>
+    case (t: Instant, JArray(JInt(channelId) :: xs)) if preprocess =>
       implicit val timeCollected = t
       getChannelName(channelId) match {
         case "book" =>
@@ -105,7 +105,6 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
           val tick = toTick(JArray(xs).extract[List[Double]])
           sender ! ("ticker", Tick.format.to(tick))
       }
-    case m => throw new Exception(s"Unhandled message: $m")
   }
 }
 

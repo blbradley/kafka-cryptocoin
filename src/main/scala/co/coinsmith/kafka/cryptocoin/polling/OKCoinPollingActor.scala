@@ -60,7 +60,7 @@ class OKCoinPollingActor extends HTTPPollingActor {
       Producer.send(topicPrefix + topic, value)
     case "tick" =>
       val req = request("/api/v1/ticker.do?symbol=btc_cny")
-      if (preprocess == true) {
+      if (preprocess) {
         req.via(convertFlow[OKCoinPollingDatedTick])
           .via(tickFlow)
           .runWith(selfSink)
@@ -69,7 +69,7 @@ class OKCoinPollingActor extends HTTPPollingActor {
       }
     case "orderbook" =>
       val req = request("/api/v1/depth.do??symbol=btc_cny")
-      if (preprocess == true) {
+      if (preprocess) {
         req.via(convertFlow[OKCoinPollingOrderBook])
           .via(orderbookFlow)
           .runWith(selfSink)

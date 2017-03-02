@@ -26,7 +26,7 @@ abstract class HTTPPollingActor extends Actor with ActorLogging {
   import context.dispatcher
 
   val conf = ConfigFactory.load
-  val preprocess = conf.getString("kafka.cryptocoin.preprocess")
+  val preprocess = conf.getBoolean("kafka.cryptocoin.preprocess")
 
   val responseFlow = Flow[(Try[HttpResponse], String)].mapAsync(1) {
     case (Success(HttpResponse(statusCode, headers, entity, _)), _) =>
