@@ -43,7 +43,7 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
 
   val conf = ConfigFactory.load
-  val preprocess = conf.getString("kafka.cryptocoin.preprocess")
+  val preprocess = conf.getBoolean("kafka.cryptocoin.preprocess")
 
   def adjustTimestamp(timeCollected: Instant, time: String) = {
     val zone = ZoneId.of("Asia/Shanghai")
@@ -85,7 +85,7 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
       log.error("Adding channel {} failed at time {}. Error code {}.", channel, t, errorCode)
 
     case (t: Instant, JObject(JField("channel", JString(channel)) :: JField("data", data) :: Nil))
-      if preprocess == true =>
+      if preprocess =>
       self forward Data(t, channel, data)
 
     case Data(t, "ok_sub_spotcny_btc_ticker", data) =>

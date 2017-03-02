@@ -54,7 +54,7 @@ class BitfinexPollingActor extends HTTPPollingActor {
       Producer.send(topicPrefix + topic, value)
     case "tick" =>
       val req = request("/v1/pubticker/btcusd")
-      if (preprocess == true) {
+      if (preprocess) {
         req.via(convertFlow[BitfinexPollingTick])
           .via(tickFlow)
           .runWith(selfSink)
@@ -63,7 +63,7 @@ class BitfinexPollingActor extends HTTPPollingActor {
       }
     case "orderbook" =>
       val req = request("/v1/book/btcusd")
-      if (preprocess == true) {
+      if (preprocess) {
         req.via(convertFlow[BitfinexPollingOrderBook])
           .via(orderbookFlow)
           .runWith(selfSink)

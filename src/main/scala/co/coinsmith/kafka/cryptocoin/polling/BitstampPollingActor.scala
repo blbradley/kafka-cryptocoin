@@ -65,7 +65,7 @@ class BitstampPollingActor extends HTTPPollingActor {
       Producer.send(topicPrefix + topic, value)
     case "tick" =>
       val req = request("/api/ticker/")
-      if (preprocess == true) {
+      if (preprocess) {
         req.via(convertFlow[BitstampPollingTick])
           .via(tickFlow)
           .runWith(selfSink)
@@ -75,7 +75,7 @@ class BitstampPollingActor extends HTTPPollingActor {
 
     case "orderbook" =>
       val req = request("/api/order_book/")
-      if (preprocess == true) {
+      if (preprocess) {
         req.via(convertFlow[BitstampPollingOrderBook])
           .via(orderbookFlow)
           .runWith(selfSink)

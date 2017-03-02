@@ -128,7 +128,7 @@ class BitstampStreamingActor extends Actor with ActorLogging {
   val topicPrefix = "bitstamp.streaming.btcusd."
 
   val conf = ConfigFactory.load
-  val preprocess = conf.getString("kafka.cryptocoin.preprocess")
+  val preprocess = conf.getBoolean("kafka.cryptocoin.preprocess")
 
   val pusher = context.actorOf(Props[BitstampPusherActor])
   val protocol = context.actorOf(Props[BitstampPusherProtocol])
@@ -144,7 +144,7 @@ class BitstampStreamingActor extends Actor with ActorLogging {
     case pe : PusherEvent =>
       Producer.send("streaming.pusher.raw", "bitstamp", PusherEvent.format.to(pe))
 
-      if (preprocess == true) {
+      if (preprocess) {
         protocol ! pe
       }
   }
