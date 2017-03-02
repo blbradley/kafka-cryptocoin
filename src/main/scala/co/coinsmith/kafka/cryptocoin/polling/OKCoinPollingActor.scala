@@ -3,7 +3,7 @@ package co.coinsmith.kafka.cryptocoin.polling
 import java.time.Instant
 
 import akka.http.scaladsl.Http
-import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.{Flow, Sink}
 import co.coinsmith.kafka.cryptocoin.producer.Producer
 import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
 
@@ -59,14 +59,22 @@ class OKCoinPollingActor extends HTTPPollingActor {
     case (topic: String, value: Object) =>
       Producer.send(topicPrefix + topic, value)
     case "tick" =>
-      request("/api/v1/ticker.do?symbol=btc_cny")
-        .via(convertFlow[OKCoinPollingDatedTick])
-        .via(tickFlow)
-        .runWith(selfSink)
+      val req = request("/api/v1/ticker.do?symbol=btc_cny")
+      if (preprocess == true) {
+        req.via(convertFlow[OKCoinPollingDatedTick])
+          .via(tickFlow)
+          .runWith(selfSink)
+      } else {
+        req.runWith(Sink.ignore)
+      }
     case "orderbook" =>
-      request("/api/v1/depth.do??symbol=btc_cny")
-        .via(convertFlow[OKCoinPollingOrderBook])
-        .via(orderbookFlow)
-        .runWith(selfSink)
+      val req = request("/api/v1/depth.do??symbol=btc_cny")
+      if (preprocess == true) {
+        req.via(convertFlow[OKCoinPollingOrderBook])
+          .via(orderbookFlow)
+          .runWith(selfSink)
+      } else {
+        req.runWith(Sink.ignore)
+      }
   }
 }
