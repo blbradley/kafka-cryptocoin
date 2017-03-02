@@ -12,6 +12,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import co.coinsmith.kafka.cryptocoin.ExchangeEvent
 import co.coinsmith.kafka.cryptocoin.producer.Producer
+import com.typesafe.config.ConfigFactory
 import org.json4s.DefaultFormats
 import org.json4s.jackson.JsonMethods._
 
@@ -23,6 +24,9 @@ abstract class HTTPPollingActor extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
   implicit val materializer = ActorMaterializer()
   import context.dispatcher
+
+  val conf = ConfigFactory.load
+  val preprocess = conf.getString("kafka.cryptocoin.preprocess")
 
   val responseFlow = Flow[(Try[HttpResponse], String)].mapAsync(1) {
     case (Success(HttpResponse(statusCode, headers, entity, _)), _) =>
