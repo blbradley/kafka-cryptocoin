@@ -1,11 +1,13 @@
 package co.coinsmith.kafka.cryptocoin.producer
 
-import java.util.Properties
+import java.util.{Properties, UUID}
 
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 
 object Producer {
+  val uuid = UUID.randomUUID
+
   val conf = ConfigFactory.load
   val brokers = conf.getString("kafka.cryptocoin.bootstrap-servers")
   val schemaRegistryUrl = conf.getString("kafka.cryptocoin.schema-registry-url")
