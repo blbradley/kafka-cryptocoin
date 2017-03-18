@@ -1,5 +1,6 @@
 package co.coinsmith.kafka.cryptocoin.streaming
 
+import scala.math.BigInt
 import java.net.URI
 import java.time.Instant
 
@@ -14,6 +15,8 @@ import org.json4s.JsonAST._
 import org.json4s.JsonDSL.WithBigDecimal._
 import org.json4s.jackson.JsonMethods._
 
+
+case class Unsubscribed(channel: String)
 
 class BitfinexWebsocketProtocol extends Actor with ActorLogging {
   implicit val formats = DefaultFormats
@@ -61,6 +64,20 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
     case _ => throw new Exception(s"Trade snapshot processing error for $trade")
   }
 
+  def handleInfoEvent(code: Int, msg: String) = code match {
+    case 20060 => log.warning(msg)
+    case 20061 =>
+      log.warning(msg)
+      for (id <- subscribed.keys) {
+        log.warning("Sending unsubscribe request for channel {}", getChannelName(id),id)
+        sender ! ("event" -> "unsubscribe") ~ ("chanId" -> id)
+      }
+  }
+
+  def handleErrorEvent(code: Int, msg: String) = code match {
+    case 10400 => log.error("During unsubscription: {}", msg)
+  }
+
   def receive = {
     case (t, JObject(JField("event", JString("subscribed")) ::
                      JField("channel", JString(channelName)) ::
@@ -68,6 +85,19 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
                      xs)) =>
       log.info("Received subscription event response for channel {} with ID {}", channelName, channelId)
       subscribed += (channelId -> channelName)
+    case (t, JObject(JField("event", JString("info")) ::
+                     JField("code", JInt(code)) ::
+                     JField("msg", JString(msg)) :: Nil)) => handleInfoEvent(code.toInt, msg)
+    case (t, JObject(JField("event", JString("unsubscribed")) ::
+                     JField("status", JString("OK")) ::
+                     JField("chanId", JInt(channelId)) :: Nil)) =>
+      val channelName = getChannelName(channelId)
+      log.warning("Unsubscribe response for channel {}: OK", getChannelName(channelId))
+      sender ! Unsubscribed(channelName)
+      subscribed = subscribed - channelId
+    case (t, JObject(JField("event", JString("error")) ::
+                     JField("code", JInt(code)) ::
+                     JField("msg", JString(msg)) :: Nil)) => handleErrorEvent(code.toInt, msg)
     case (t, event: JValue) if isEvent(event) =>
       log.info("Received event message: {}", compact(render(event)))
     case (t: Instant, JArray(JInt(channelId) :: JString("hb") :: Nil)) =>
@@ -119,19 +149,22 @@ class BitfinexStreamingActor extends Actor with ActorLogging {
     case t => super.supervisorStrategy.decider.applyOrElse(t, (_: Any) => Escalate)
   }
 
-  val channels = List(
-    ("event" -> "subscribe") ~ ("channel" -> "book") ~ ("pair" -> "BTCUSD")
+  val channelSubscriptionMessages = Map(
+    "book" -> ("event" -> "subscribe") ~ ("channel" -> "book") ~ ("pair" -> "BTCUSD")
       ~ ("prec" -> "R0") ~ ("len" -> "100"),
-    ("event" -> "subscribe") ~ ("channel" -> "trades") ~ ("pair" -> "BTCUSD"),
-    ("event" -> "subscribe") ~ ("channel" -> "ticker") ~ ("pair" -> "BTCUSD")
-  )
-  val messages = channels.map(j => compact(render(j))).map(s => TextMessage(s))
+    "trades" -> ("event" -> "subscribe") ~ ("channel" -> "trades") ~ ("pair" -> "BTCUSD"),
+    "ticker" -> ("event" -> "subscribe") ~ ("channel" -> "ticker") ~ ("pair" -> "BTCUSD")
+  ).mapValues(j => compact(render(j))).mapValues(s => TextMessage(s))
 
-  val websocket = new AkkaWebsocket(uri, messages, self)
+  val websocket = new AkkaWebsocket(uri, channelSubscriptionMessages.values.toList, self)
   val protocol = context.actorOf(Props[BitfinexWebsocketProtocol])
   websocket.connect
 
   def receive = {
+    case json: JValue =>
+      websocket.send(TextMessage(compact(render(json))))
+    case e: Unsubscribed =>
+      websocket.send(channelSubscriptionMessages(e.channel))
     case (topic: String, value: Object) =>
       Producer.send(topicPrefix + topic, value)
     case (t: Instant, msg: String) =>
