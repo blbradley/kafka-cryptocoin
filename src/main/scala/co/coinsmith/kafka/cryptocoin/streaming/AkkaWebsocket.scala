@@ -9,8 +9,8 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest}
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Sink, Source, Zip}
-import akka.stream.{ActorMaterializer, FlowShape}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Sink, Source, SourceQueueWithComplete, Zip}
+import akka.stream.{ActorMaterializer, FlowShape, OverflowStrategy}
 import org.json4s.JsonAST.JValue
 import org.json4s.jackson.JsonMethods.parse
 
@@ -19,15 +19,16 @@ class AkkaWebsocket(uri: URI, messages: List[TextMessage], receiver: ActorRef)(i
   implicit val ec = system.dispatcher
   implicit val materializer = ActorMaterializer()
   val log = Logging(system.eventStream, this.getClass.getName)
-  var promise: Promise[Option[Message]] = _
+  var queue: SourceQueueWithComplete[Message] = _
 
   // emit initial message and then keep the connection open
-  val source: Source[Message, Promise[Option[Message]]] =
-    Source(messages).concatMat(Source.maybe[Message])(Keep.right)
+//  val source: Source[Message, Promise[Option[Message]]] =
+//    Source(messages).concatMat(Source.maybe[Message])(Keep.right)
+  val source = Source.queue[Message](100, OverflowStrategy.backpressure)
 
   val receiverSink = Sink.foreach[(Instant, String)] { receiver ! _ }
 
-  val websocketFlow: Flow[Message, Message, (Future[Done], Promise[Option[Message]])] =
+  val websocketFlow: Flow[Message, Message, (Future[Done], SourceQueueWithComplete[Message])] =
     Flow.fromGraph(GraphDSL.create(receiverSink, source)((_,_)) { implicit b =>
       (sink, source) =>
         import GraphDSL.Implicits._
@@ -45,12 +46,19 @@ class AkkaWebsocket(uri: URI, messages: List[TextMessage], receiver: ActorRef)(i
     })
 
   def connect: Unit = {
-    val (upgradeResponse, (sinkClosed, promise)) =
+    val (upgradeResponse, (sinkClosed, queue)) =
       Http().singleWebSocketRequest(
         WebSocketRequest(uri.toString),
         websocketFlow)
 
-    this.promise = promise
+    // send initial messages
+    for (msg <- messages) {
+      queue.offer(msg)
+    }
+
+    // expose queue to class
+    this.queue = queue
+
     sinkClosed.onComplete { _ =>
       log.info("Reconnecting in five seconds to {}", uri)
       Thread.sleep(5000)
@@ -65,6 +73,10 @@ class AkkaWebsocket(uri: URI, messages: List[TextMessage], receiver: ActorRef)(i
   }
 
   def disconnect = {
-    promise.success(None)
+    queue.complete
+  }
+
+  def send(msg: Message) = {
+    queue.offer(msg)
   }
 }
