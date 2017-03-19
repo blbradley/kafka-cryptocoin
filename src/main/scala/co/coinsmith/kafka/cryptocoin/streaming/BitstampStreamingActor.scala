@@ -1,9 +1,10 @@
 package co.coinsmith.kafka.cryptocoin.streaming
 
 import java.time.Instant
+import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Trade}
+import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, ProducerKey, Trade}
 import co.coinsmith.kafka.cryptocoin.avro.InstantTypeMaps._
 import co.coinsmith.kafka.cryptocoin.producer.Producer
 import com.pusher.client.Pusher
@@ -53,7 +54,7 @@ object BitstampStreamingOrderBook {
     )
 }
 
-case class PusherEvent(channelName: String, eventName: String, timestamp: Instant, msg: String)
+case class PusherEvent(channelName: String, eventName: String, timestamp: Instant, producerUUID: UUID, msg: String)
 object PusherEvent {
   val format = RecordFormat[PusherEvent]
 }
@@ -83,7 +84,7 @@ class BitstampPusherActor extends Actor with ActorLogging {
     override def onEvent(channelName: String, eventName: String, data: String) = {
       val timeCollected = Instant.now
       log.debug("Received event {} on channel {}: {}", channelName, eventName, data)
-      receiver ! PusherEvent(channelName, eventName, timeCollected, data)
+      receiver ! PusherEvent(channelName, eventName, timeCollected, Producer.uuid, data)
     }
   }
 
@@ -142,7 +143,8 @@ class BitstampStreamingActor extends Actor with ActorLogging {
     case (topic: String, value: Object) =>
       Producer.send(topicPrefix + topic, value)
     case pe : PusherEvent =>
-      Producer.send("streaming.pusher.raw", "bitstamp", PusherEvent.format.to(pe))
+      val key = ProducerKey(Producer.uuid, "bitstamp")
+      Producer.send("streaming.pusher.raw", ProducerKey.format.to(key), PusherEvent.format.to(pe))
 
       if (preprocess) {
         protocol ! pe

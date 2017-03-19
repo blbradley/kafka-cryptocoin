@@ -169,8 +169,9 @@ class BitfinexStreamingActor extends Actor with ActorLogging {
       Producer.send(topicPrefix + topic, value)
     case (t: Instant, msg: String) =>
       val exchange = "bitfinex"
-      val event = ExchangeEvent(t, exchange, msg)
-      Producer.send("streaming.websocket.raw", exchange, ExchangeEvent.format.to(event))
+      val key = ProducerKey(Producer.uuid, exchange)
+      val event = ExchangeEvent(t, Producer.uuid, exchange, msg)
+      Producer.send("streaming.websocket.raw", ProducerKey.format.to(key), ExchangeEvent.format.to(event))
 
       protocol ! (t, parse(msg))
   }

@@ -1,13 +1,19 @@
 package co.coinsmith.kafka.cryptocoin
 
 import java.time.Instant
+import java.util.UUID
 
 import co.coinsmith.kafka.cryptocoin.avro.InstantTypeMaps._
 import co.coinsmith.kafka.cryptocoin.avro.GlobalScaleAndPrecision._
 import com.sksamuel.avro4s.RecordFormat
 
 
-case class ExchangeEvent(timestamp: Instant, exchange: String, data: String)
+case class ProducerKey(producerUUID: UUID, exchange: String)
+object ProducerKey {
+  val format = RecordFormat[ProducerKey]
+}
+
+case class ExchangeEvent(timestamp: Instant, producerUUID: UUID, exchange: String, data: String)
 object ExchangeEvent {
   val format = RecordFormat[ExchangeEvent]
 }

@@ -1,6 +1,7 @@
 package co.coinsmith.kafka.cryptocoin.polling
 
 import java.time.Instant
+import java.util.UUID
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
@@ -23,13 +24,14 @@ class BitfinexPollingActorSpec
   "BitfinexPollingActor" should "process a ticker message" in {
     val timeCollected = Instant.ofEpochSecond(10L)
     val timestamp = Instant.ofEpochSecond(1461608354L, 95383854L)
+    val uuid = UUID.randomUUID
     val json = ("mid" -> "464.845") ~
       ("bid" -> "464.8") ~
       ("ask" -> "464.89") ~
       ("last_price" -> "464.9") ~
       ("timestamp" -> "1461608354.095383854")
     val data = compact(render(json))
-    val event = ExchangeEvent(timeCollected, actor.exchange, data)
+    val event = ExchangeEvent(timeCollected, uuid, actor.exchange, data)
 
     val expected = Tick(464.9, 464.8, 464.89, timeCollected, timestamp = Some(timestamp))
 
@@ -44,6 +46,7 @@ class BitfinexPollingActorSpec
 
   it should "process an orderbook message" in {
     val timeCollected = Instant.ofEpochSecond(10L)
+    val uuid = UUID.randomUUID
     val json = ("bids" -> List(
       ("price" -> "464.11") ~ ("amount" -> "43.98077206") ~ ("timestamp" -> "1461607939.0"),
       ("price" -> "463.87") ~ ("amount" -> "21.3389") ~ ("timestamp" -> "1461607927.0"),
@@ -54,7 +57,7 @@ class BitfinexPollingActorSpec
       ("price" -> "464.63") ~ ("amount" -> "4.07481358") ~ ("timestamp" -> "1461607944.0")
     ))
     val data = compact(render(json))
-    val event = ExchangeEvent(timeCollected, actor.exchange, data)
+    val event = ExchangeEvent(timeCollected, uuid, actor.exchange, data)
 
     val bids = List(
       Order(464.11, 43.98077206, timestamp = Some(Instant.ofEpochSecond(1461607939L))),
