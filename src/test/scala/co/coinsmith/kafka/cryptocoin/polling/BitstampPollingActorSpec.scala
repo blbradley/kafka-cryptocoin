@@ -1,6 +1,7 @@
 package co.coinsmith.kafka.cryptocoin.polling
 
 import java.time.Instant
+import java.util.UUID
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes
@@ -24,6 +25,7 @@ class BitstampPollingActorSpec
   "BitstampPollingActor" should "process a ticker message" in {
     val timeCollected = Instant.ofEpochSecond(10L)
     val timestamp = Instant.ofEpochSecond(1459297128)
+    val uuid = UUID.randomUUID
     val json = ("high" ->  "424.37") ~
       ("last" -> "415.24") ~
       ("timestamp" -> timestamp.getEpochSecond.toString) ~
@@ -34,7 +36,7 @@ class BitstampPollingActorSpec
       ("ask" -> "415.24") ~
       ("open" -> 415.43)
     val data = compact(render(json))
-    val event = ExchangeEvent(timeCollected, actor.exchange, data)
+    val event = ExchangeEvent(timeCollected, uuid, actor.exchange, data)
 
     val expected = Tick(
       415.24, 414.34, 415.24, timeCollected,
@@ -54,6 +56,7 @@ class BitstampPollingActorSpec
 
   it should "process an orderbook message" in {
     val timeCollected = Instant.ofEpochSecond(10L)
+    val uuid = UUID.randomUUID
     val timestamp = 1461605735L
     val json = ("timestamp" -> timestamp.toString) ~
       ("bids" -> List(
@@ -67,7 +70,7 @@ class BitstampPollingActorSpec
       ))
     val contentType = ContentTypes.`application/json`
     val data = compact(render(json))
-    val event = ExchangeEvent(timeCollected, actor.exchange, data)
+    val event = ExchangeEvent(timeCollected, uuid, actor.exchange, data)
 
     val bids = List(
       Order("462.49", "0.03010000"),

@@ -8,12 +8,12 @@ import co.coinsmith.kafka.cryptocoin.avro.GlobalScaleAndPrecision._
 import com.sksamuel.avro4s.RecordFormat
 
 
-case class ProducerKey(exchange: String, uuid: UUID)
+case class ProducerKey(producerUUID: UUID, exchange: String)
 object ProducerKey {
   val format = RecordFormat[ProducerKey]
 }
 
-case class ExchangeEvent(timestamp: Instant, exchange: String, data: String, uuid: UUID)
+case class ExchangeEvent(timestamp: Instant, producerUUID: UUID, exchange: String, data: String)
 object ExchangeEvent {
   val format = RecordFormat[ExchangeEvent]
 }

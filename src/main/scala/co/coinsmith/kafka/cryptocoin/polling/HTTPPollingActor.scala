@@ -33,7 +33,7 @@ abstract class HTTPPollingActor extends Actor with ActorLogging {
       val timeCollected = Instant.now
       log.debug("Request returned status code {} with entity {}",  statusCode, entity)
       val msg = responseEntityToString(entity)
-      msg.map(s => ExchangeEvent(timeCollected, exchange, s, Producer.uuid))
+      msg.map(s => ExchangeEvent(timeCollected, Producer.uuid, exchange, s))
     case (Failure(response), _) =>
       throw new Exception(s"Request failed with response ${response}")
   }
