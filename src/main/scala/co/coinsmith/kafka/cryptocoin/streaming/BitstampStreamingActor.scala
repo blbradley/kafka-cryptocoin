@@ -144,7 +144,7 @@ class BitstampStreamingActor extends Actor with ActorLogging {
       Producer.send(topicPrefix + topic, value)
     case pe : PusherEvent =>
       val key = ProducerKey(Producer.uuid, "bitstamp")
-      Producer.send("streaming.websocket.raw", ProducerKey.format.to(key), PusherEvent.format.to(pe))
+      Producer.send("streaming.pusher.raw", ProducerKey.format.to(key), PusherEvent.format.to(pe))
 
       if (preprocess) {
         protocol ! pe
