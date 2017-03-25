@@ -1,5 +1,6 @@
 package co.coinsmith.kafka.cryptocoin.producer
 
+import java.io.FileInputStream
 import java.util.{Properties, UUID}
 
 import com.typesafe.config.ConfigFactory
@@ -13,10 +14,18 @@ object Producer {
   val schemaRegistryUrl = conf.getString("kafka.cryptocoin.schema-registry-url")
 
   val props = new Properties
+  props.put("acks", "all")
+
+  val producerConfigPath = "kafka.cryptocoin.producer.config"
+  if (conf.hasPath(producerConfigPath)) {
+    val filename = conf.getString(producerConfigPath)
+    val propsFile = new FileInputStream(filename)
+    props.load(propsFile)
+  }
+
   props.put("bootstrap.servers", brokers)
   props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "io.confluent.kafka.serializers.KafkaAvroSerializer")
   props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "io.confluent.kafka.serializers.KafkaAvroSerializer")
-  props.put("acks", "all")
   props.put("schema.registry.url", schemaRegistryUrl)
   val producer = new KafkaProducer[Object, Object](props)
 
