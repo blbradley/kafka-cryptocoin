@@ -1,5 +1,6 @@
 package co.coinsmith.kafka.cryptocoin.streaming
 
+import scala.concurrent.duration._
 import java.net.URI
 import java.time._
 
@@ -109,6 +110,7 @@ class OKCoinWebsocketProtocol extends Actor with ActorLogging {
 
 class OKCoinStreamingActor extends Actor with ActorLogging {
   implicit val actorSystem = context.system
+  implicit val dispatcher = actorSystem.dispatcher
 
   val topicPrefix = "okcoin.streaming.btcusd."
   val uri = new URI("wss://real.okcoin.cn:10440/websocket/okcoinapi")
@@ -123,6 +125,12 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
   val websocket = new AkkaWebsocket(uri, messages, self)
   val protocol = context.actorOf(Props[OKCoinWebsocketProtocol])
   websocket.connect
+
+  val pingEvent = ("event" -> "ping")
+  actorSystem.scheduler.schedule(30 seconds, 30 seconds) {
+    val msg = TextMessage(compact(render(pingEvent)))
+    websocket.send(msg)
+  }
 
   def receive = {
     case (topic: String, value: Object) =>
