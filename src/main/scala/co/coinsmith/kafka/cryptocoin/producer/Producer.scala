@@ -5,9 +5,13 @@ import java.util.{Properties, UUID}
 
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
+import org.slf4j.LoggerFactory
 
 object Producer {
+  val logger = LoggerFactory.getLogger(this.getClass)
+
   val uuid = UUID.randomUUID
+  logger.info("Producer UUID: {}", uuid)
 
   val conf = ConfigFactory.load
   val brokers = conf.getString("kafka.cryptocoin.bootstrap-servers")
