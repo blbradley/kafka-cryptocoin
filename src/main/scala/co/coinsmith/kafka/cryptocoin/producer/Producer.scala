@@ -19,6 +19,8 @@ object Producer {
 
   val props = new Properties
   props.put("acks", "all")
+  props.put("retries", Integer.MAX_VALUE.toString)
+  props.put("max.in.flight.requests.per.connection", "1")
 
   val producerConfigPath = "kafka.cryptocoin.producer.config"
   if (conf.hasPath(producerConfigPath)) {
