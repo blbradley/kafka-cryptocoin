@@ -4,7 +4,7 @@ import java.io.FileInputStream
 import java.util.{Properties, UUID}
 
 import com.typesafe.config.ConfigFactory
-import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
+import org.apache.kafka.clients.producer._
 import org.slf4j.LoggerFactory
 
 object Producer {
@@ -35,13 +35,22 @@ object Producer {
   props.put("schema.registry.url", schemaRegistryUrl)
   val producer = new KafkaProducer[Object, Object](props)
 
+  def callbackWithData(data: ProducerRecord[Object, Object]): Callback = new Callback {
+    override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit = {
+      if (exception != null) {
+        exception.printStackTrace()
+        producer.send(data, callbackWithData(data))
+      }
+    }
+  }
+
   def send(topic: String, key: Object, value: Object) = {
     val data = new ProducerRecord[Object, Object](topic, key, value)
-    producer.send(data)
+    producer.send(data, callbackWithData(data))
   }
 
   def send(topic: String, value: Object) {
     val data = new ProducerRecord[Object, Object](topic, value)
-    producer.send(data)
+    producer.send(data, callbackWithData(data))
   }
 }
