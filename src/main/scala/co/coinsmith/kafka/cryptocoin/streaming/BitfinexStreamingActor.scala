@@ -7,8 +7,9 @@ import java.time.Instant
 import akka.actor.SupervisorStrategy.Escalate
 import akka.actor.{Actor, ActorLogging, AllForOneStrategy, Props}
 import akka.http.scaladsl.model.ws.TextMessage
+import akka.stream.ActorMaterializer
 import co.coinsmith.kafka.cryptocoin._
-import co.coinsmith.kafka.cryptocoin.producer.Producer
+import co.coinsmith.kafka.cryptocoin.producer.KafkaCryptocoinProducer
 import com.typesafe.config.ConfigFactory
 import org.json4s.DefaultFormats
 import org.json4s.JsonAST._
@@ -140,6 +141,7 @@ class BitfinexWebsocketProtocol extends Actor with ActorLogging {
 
 class BitfinexStreamingActor extends Actor with ActorLogging {
   implicit val actorSystem = context.system
+  implicit val materializer = ActorMaterializer()
 
   val topicPrefix = "bitfinex.streaming.btcusd."
   val uri = new URI("wss://api2.bitfinex.com:3000/ws")
@@ -166,12 +168,12 @@ class BitfinexStreamingActor extends Actor with ActorLogging {
     case e: Unsubscribed =>
       websocket.send(channelSubscriptionMessages(e.channel))
     case (topic: String, value: Object) =>
-      Producer.send(topicPrefix + topic, value)
+      KafkaCryptocoinProducer.send(topicPrefix + topic, value)
     case (t: Instant, msg: String) =>
       val exchange = "bitfinex"
-      val key = ProducerKey(Producer.uuid, exchange)
-      val event = ExchangeEvent(t, Producer.uuid, exchange, msg)
-      Producer.send("streaming.websocket.raw", ProducerKey.format.to(key), ExchangeEvent.format.to(event))
+      val key = ProducerKey(KafkaCryptocoinProducer.uuid, exchange)
+      val event = ExchangeEvent(t, KafkaCryptocoinProducer.uuid, exchange, msg)
+      KafkaCryptocoinProducer.send("streaming.websocket.raw", ProducerKey.format.to(key), ExchangeEvent.format.to(event))
 
       protocol ! (t, parse(msg))
   }

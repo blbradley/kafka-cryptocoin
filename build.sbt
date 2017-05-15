@@ -7,6 +7,7 @@ val akkaVersion = "2.5.0"
 libraryDependencies += "org.slf4j" % "slf4j-log4j12" % "1.7.25"
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % akkaVersion
 libraryDependencies += "com.typesafe.akka" %% "akka-stream" % akkaVersion
+libraryDependencies += "com.typesafe.akka" %% "akka-stream-kafka" % "0.16"
 libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.5"
 libraryDependencies += "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
 libraryDependencies += "org.apache.kafka" % "kafka-clients" % "0.10.2.1-cp1"
