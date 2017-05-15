@@ -6,17 +6,18 @@ import java.util.{Properties, UUID}
 
 import akka.Done
 import akka.actor.ActorSystem
+import akka.event.Logging
 import akka.kafka.ProducerSettings
 import akka.kafka.scaladsl.Producer
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Keep, Source}
+import akka.stream.scaladsl.Source
+import co.coinsmith.kafka.cryptocoin.KafkaCryptocoin
 import com.typesafe.config.ConfigFactory
 import io.confluent.kafka.serializers.KafkaAvroSerializer
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
-import org.slf4j.LoggerFactory
 
 object KafkaCryptocoinProducer {
-  val logger = LoggerFactory.getLogger(this.getClass)
+  val logger = Logging(KafkaCryptocoin.system.eventStream, this.getClass.getName)
 
   val uuid = UUID.randomUUID
   logger.info("Producer UUID: {}", uuid)
@@ -48,20 +49,16 @@ object KafkaCryptocoinProducer {
 
   def producerComplete(td: Try[Done]) = td match {
     case Success(d) =>
-    case Failure(ex) => ex.printStackTrace()
+    case Failure(ex) => throw ex
   }
 
-  def send(topic: String, key: Object, value: Object)(implicit system: ActorSystem, materializor: ActorMaterializer) = {
+  def send(topic: String, key: Object, value: Object)(implicit system: ActorSystem, materializer: ActorMaterializer) = {
     import system.dispatcher
     val data = new ProducerRecord[Object, Object](topic, key, value)
     val closed = Source.single(data).runWith(getProducerSink)
     closed.onComplete(producerComplete)
   }
 
-  def send(topic: String, value: Object)(implicit system: ActorSystem, materializor: ActorMaterializer) {
-    import system.dispatcher
-    val data = new ProducerRecord[Object, Object](topic, value)
-    val closed = Source.single(data).runWith(getProducerSink)
-    closed.onComplete(producerComplete)
-  }
+  def send(topic: String, value: Object)(implicit system: ActorSystem, materializer: ActorMaterializer): Unit =
+    send(topic, null, value)
 }
