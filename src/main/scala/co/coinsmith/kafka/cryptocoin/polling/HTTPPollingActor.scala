@@ -2,14 +2,12 @@ package co.coinsmith.kafka.cryptocoin.polling
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
 import java.time.Instant
 
 import akka.actor.{Actor, ActorLogging}
-import akka.http.scaladsl.Http.HostConnectionPool
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, ResponseEntity, StatusCodes}
+import akka.http.scaladsl.model.{HttpResponse, ResponseEntity, StatusCodes}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 import co.coinsmith.kafka.cryptocoin.ExchangeEvent
 import co.coinsmith.kafka.cryptocoin.producer.Producer
