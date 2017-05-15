@@ -5,7 +5,7 @@ import java.time.Instant
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpRequest
 import akka.stream.scaladsl.Flow
-import co.coinsmith.kafka.cryptocoin.producer.Producer
+import co.coinsmith.kafka.cryptocoin.producer.KafkaCryptocoinProducer
 import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
 
 
@@ -37,6 +37,7 @@ object BitfinexPollingOrderBook {
 
 class BitfinexPollingActor extends HTTPPollingActor {
   import akka.pattern.pipe
+  import context.system
   import context.dispatcher
 
   val exchange = "bitfinex"
@@ -55,7 +56,7 @@ class BitfinexPollingActor extends HTTPPollingActor {
 
   def receive = periodicBehavior orElse responseBehavior orElse {
     case (topic: String, value: Object) =>
-      Producer.send(topicPrefix + topic, value)
+      KafkaCryptocoinProducer.send(topicPrefix + topic, value)
     case "tick" =>
       http.singleRequest(HttpRequest(uri = "https://api.bitfinex.com/v1/pubticker/btcusd")) pipeTo self
     case "orderbook" =>

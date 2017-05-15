@@ -1,13 +1,21 @@
 package co.coinsmith.kafka.cryptocoin.producer
 
+import scala.util.{Failure, Success, Try}
 import java.io.FileInputStream
 import java.util.{Properties, UUID}
 
+import akka.Done
+import akka.actor.ActorSystem
+import akka.kafka.ProducerSettings
+import akka.kafka.scaladsl.Producer
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Keep, Source}
 import com.typesafe.config.ConfigFactory
+import io.confluent.kafka.serializers.KafkaAvroSerializer
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.slf4j.LoggerFactory
 
-object Producer {
+object KafkaCryptocoinProducer {
   val logger = LoggerFactory.getLogger(this.getClass)
 
   val uuid = UUID.randomUUID
@@ -33,13 +41,27 @@ object Producer {
   props.put("schema.registry.url", schemaRegistryUrl)
   val producer = new KafkaProducer[Object, Object](props)
 
-  def send(topic: String, key: Object, value: Object) = {
-    val data = new ProducerRecord[Object, Object](topic, key, value)
-    producer.send(data)
+  def getProducerSink(implicit system: ActorSystem) = {
+    val settings = ProducerSettings(system, new KafkaAvroSerializer, new KafkaAvroSerializer)
+    Producer.plainSink(settings, producer)
   }
 
-  def send(topic: String, value: Object) {
+  def producerComplete(td: Try[Done]) = td match {
+    case Success(d) =>
+    case Failure(ex) => ex.printStackTrace()
+  }
+
+  def send(topic: String, key: Object, value: Object)(implicit system: ActorSystem, materializor: ActorMaterializer) = {
+    import system.dispatcher
+    val data = new ProducerRecord[Object, Object](topic, key, value)
+    val closed = Source.single(data).runWith(getProducerSink)
+    closed.onComplete(producerComplete)
+  }
+
+  def send(topic: String, value: Object)(implicit system: ActorSystem, materializor: ActorMaterializer) {
+    import system.dispatcher
     val data = new ProducerRecord[Object, Object](topic, value)
-    producer.send(data)
+    val closed = Source.single(data).runWith(getProducerSink)
+    closed.onComplete(producerComplete)
   }
 }
