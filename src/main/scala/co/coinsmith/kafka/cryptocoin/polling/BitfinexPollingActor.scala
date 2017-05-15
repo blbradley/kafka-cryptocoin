@@ -3,6 +3,7 @@ package co.coinsmith.kafka.cryptocoin.polling
 import java.time.Instant
 
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.HttpRequest
 import akka.stream.scaladsl.{Flow, Sink}
 import co.coinsmith.kafka.cryptocoin.producer.Producer
 import co.coinsmith.kafka.cryptocoin.{Order, OrderBook, Tick}
@@ -35,9 +36,12 @@ object BitfinexPollingOrderBook {
 }
 
 class BitfinexPollingActor extends HTTPPollingActor {
+  import akka.pattern.pipe
+  import context.dispatcher
+
   val exchange = "bitfinex"
   val topicPrefix = "bitfinex.polling.btcusd."
-  val pool = Http(context.system).cachedHostConnectionPoolHttps[String]("api.bitfinex.com")
+  val http = Http(context.system)
 
   val tickFlow = Flow[(Instant, BitfinexPollingTick)].map { case (t, tick) =>
     implicit val timeCollected = t
@@ -49,26 +53,12 @@ class BitfinexPollingActor extends HTTPPollingActor {
     ("orderbook", OrderBook.format.to(ob))
   }
 
-  def receive = periodicBehavior orElse {
+  def receive = periodicBehavior orElse responseBehavior orElse {
     case (topic: String, value: Object) =>
       Producer.send(topicPrefix + topic, value)
     case "tick" =>
-      val req = request("/v1/pubticker/btcusd")
-      if (preprocess) {
-        req.via(convertFlow[BitfinexPollingTick])
-          .via(tickFlow)
-          .runWith(selfSink)
-      } else {
-        req.runWith(Sink.ignore)
-      }
+      http.singleRequest(HttpRequest(uri = "https://api.bitfinex.com/v1/pubticker/btcusd")) pipeTo self
     case "orderbook" =>
-      val req = request("/v1/book/btcusd")
-      if (preprocess) {
-        req.via(convertFlow[BitfinexPollingOrderBook])
-          .via(orderbookFlow)
-          .runWith(selfSink)
-      } else {
-        req.runWith(Sink.ignore)
-      }
+      http.singleRequest(HttpRequest(uri = "https://api.bitfinex.com/v1/book/btcusd")) pipeTo self
   }
 }
