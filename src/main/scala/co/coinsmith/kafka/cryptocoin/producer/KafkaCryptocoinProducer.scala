@@ -42,10 +42,8 @@ object KafkaCryptocoinProducer {
   props.put("schema.registry.url", schemaRegistryUrl)
   val producer = new KafkaProducer[Object, Object](props)
 
-  def getProducerSink(implicit system: ActorSystem) = {
-    val settings = ProducerSettings(system, new KafkaAvroSerializer, new KafkaAvroSerializer)
-    Producer.plainSink(settings, producer)
-  }
+  val settings = ProducerSettings(KafkaCryptocoin.system, new KafkaAvroSerializer, new KafkaAvroSerializer)
+  val producerSink = Producer.plainSink(settings, producer)
 
   def producerComplete(td: Try[Done]) = td match {
     case Success(d) =>
@@ -55,7 +53,7 @@ object KafkaCryptocoinProducer {
   def send(topic: String, key: Object, value: Object)(implicit system: ActorSystem, materializer: ActorMaterializer) = {
     import system.dispatcher
     val data = new ProducerRecord[Object, Object](topic, key, value)
-    val closed = Source.single(data).runWith(getProducerSink)
+    val closed = Source.single(data).runWith(producerSink)
     closed.onComplete(producerComplete)
   }
 
