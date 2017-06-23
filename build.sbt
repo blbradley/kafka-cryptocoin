@@ -2,11 +2,13 @@ name := "kafka-cryptocoin"
 organization := "coinsmith"
 scalaVersion := "2.12.1"
 
-val akkaVersion = "2.5.0"
+val akkaVersion = "2.4.18"
 
 libraryDependencies += "org.slf4j" % "slf4j-log4j12" % "1.7.25"
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % akkaVersion
 libraryDependencies += "com.typesafe.akka" %% "akka-stream" % akkaVersion
+libraryDependencies += "com.typesafe.akka" %% "akka-persistence" % akkaVersion
+libraryDependencies += "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion
 libraryDependencies += "com.typesafe.akka" %% "akka-stream-kafka" % "0.16"
 libraryDependencies += "com.typesafe.akka" %% "akka-http" % "10.0.5"
 libraryDependencies += "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
@@ -15,6 +17,8 @@ libraryDependencies += "io.confluent" % "kafka-avro-serializer" % "3.2.1" classi
 libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.5.1"
 libraryDependencies += "com.sksamuel.avro4s" %% "avro4s-core" % "1.6.4"
 libraryDependencies += "com.pusher" % "pusher-java-client" % "1.5.0"
+libraryDependencies += "org.iq80.leveldb" % "leveldb" % "0.7"
+libraryDependencies += "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8"
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.0.1" % "test",
@@ -25,6 +29,8 @@ libraryDependencies ++= Seq(
 resolvers ++= Seq(
   "Confluent Maven Repo" at "http://packages.confluent.io/maven/"
 )
+
+fork := true
 
 enablePlugins(GitVersioning)
 enablePlugins(DockerPlugin)

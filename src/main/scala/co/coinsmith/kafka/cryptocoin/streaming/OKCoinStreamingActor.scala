@@ -7,7 +7,7 @@ import java.time._
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.http.scaladsl.model.ws.TextMessage
 import akka.stream.ActorMaterializer
-import co.coinsmith.kafka.cryptocoin.producer.KafkaCryptocoinProducer
+import co.coinsmith.kafka.cryptocoin.producer.{KafkaCryptocoinProducer, ProducerQuery}
 import co.coinsmith.kafka.cryptocoin._
 import com.typesafe.config.ConfigFactory
 import org.json4s.DefaultFormats
@@ -115,6 +115,7 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
   implicit val dispatcher = actorSystem.dispatcher
 
   val topicPrefix = "okcoin.streaming.btcusd."
+  val exchange = "okcoin"
   val uri = new URI("wss://real.okcoin.cn:10440/websocket/okcoinapi")
 
   val channels = List(
@@ -124,9 +125,11 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
   )
   val messages = List(TextMessage(compact(render(channels))))
 
-  val websocket = new AkkaWebsocket(uri, messages, self)
+  val websocket = new AkkaWebsocket(exchange, uri, messages, self)
   val protocol = context.actorOf(Props[OKCoinWebsocketProtocol])
   websocket.connect
+
+  val pq = new ProducerQuery("streaming")
 
   val pingEvent = ("event" -> "ping")
   actorSystem.scheduler.schedule(30 seconds, 30 seconds) {
@@ -139,9 +142,12 @@ class OKCoinStreamingActor extends Actor with ActorLogging {
       KafkaCryptocoinProducer.send(topicPrefix + topic, value)
     case (t: Instant, msg: String) =>
       val exchange = "okcoin"
-      val key = ProducerKey(KafkaCryptocoinProducer.uuid, exchange)
-      val event = ExchangeEvent(t, KafkaCryptocoinProducer.uuid, exchange, msg)
-      KafkaCryptocoinProducer.send("streaming.websocket.raw", ProducerKey.format.to(key), ExchangeEvent.format.to(event))
+//      val key = ProducerKey(KafkaCryptocoinProducer.uuid, exchange)
+//      val event = ExchangeEvent(t, KafkaCryptocoinProducer.uuid, exchange, msg)
+//      KafkaCryptocoinProducer.send("streaming.websocket.raw", ProducerKey.format.to(key), ExchangeEvent.format.to(event))
+
+      val actor = context.actorOf(Props[PersistentStreamingActor])
+      actor ! SaveWebsocketMessage(t, exchange, msg)
 
       protocol ! (t, parse(msg))
   }

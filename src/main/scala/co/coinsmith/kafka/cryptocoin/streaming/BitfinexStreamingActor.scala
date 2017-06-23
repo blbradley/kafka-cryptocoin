@@ -144,6 +144,7 @@ class BitfinexStreamingActor extends Actor with ActorLogging {
   implicit val materializer = ActorMaterializer()
 
   val topicPrefix = "bitfinex.streaming.btcusd."
+  val exchange = "bitfinex"
   val uri = new URI("wss://api2.bitfinex.com:3000/ws")
 
   override val supervisorStrategy = AllForOneStrategy() {
@@ -158,7 +159,7 @@ class BitfinexStreamingActor extends Actor with ActorLogging {
     "ticker" -> ("event" -> "subscribe") ~ ("channel" -> "ticker") ~ ("pair" -> "BTCUSD")
   ).mapValues(j => compact(render(j))).mapValues(s => TextMessage(s))
 
-  val websocket = new AkkaWebsocket(uri, channelSubscriptionMessages.values.toList, self)
+  val websocket = new AkkaWebsocket(exchange, uri, channelSubscriptionMessages.values.toList, self)
   val protocol = context.actorOf(Props[BitfinexWebsocketProtocol])
   websocket.connect
 

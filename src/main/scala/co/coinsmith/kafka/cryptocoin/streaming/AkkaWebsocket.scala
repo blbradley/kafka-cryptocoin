@@ -5,7 +5,7 @@ import java.net.URI
 import java.time.Instant
 
 import akka.Done
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ws.{Message, TextMessage, WebSocketRequest}
@@ -15,7 +15,7 @@ import org.json4s.JsonAST.JValue
 import org.json4s.jackson.JsonMethods.parse
 
 
-class AkkaWebsocket(uri: URI, messages: List[TextMessage], receiver: ActorRef)(implicit system: ActorSystem) {
+class AkkaWebsocket(exchange: String, uri: URI, messages: List[TextMessage], receiver: ActorRef)(implicit system: ActorSystem) {
   implicit val ec = system.dispatcher
   implicit val materializer = ActorMaterializer()
   val log = Logging(system.eventStream, this.getClass.getName)

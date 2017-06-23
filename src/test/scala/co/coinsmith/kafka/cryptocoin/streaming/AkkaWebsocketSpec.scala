@@ -47,7 +47,7 @@ class AkkaWebsocketSpec extends TestKit(ActorSystem("AkkaWebsocketSpecSystem"))
   "AkkaWebsocket" should "send timestamp and message to receiver" in {
     val probe = TestProbe()
     val messages = List(TextMessage("{}"))
-    val websocket = new AkkaWebsocket(new URI("ws://localhost:8080/test"), messages, probe.ref)
+    val websocket = new AkkaWebsocket(, new URI("ws://localhost:8080/test"), messages, probe.ref)()
 
     websocket.connect
     probe.expectMsgPF() {
