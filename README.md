@@ -48,6 +48,15 @@ Start the the required services. Then, run:
 Docker
 ------
 
+### Docker Compose
+
+This repo includes a Compose file that will run the (development version of the) app and all services required for demo purposes.
+
+    docker-compose up
+
+Prepare for lots of output. The app should wait for the required services to start.
+
+
 ### Run Docker image
 
 Images for development and mainline versions are built and pushed to [Docker Hub](https://hub.docker.com/r/coinsmith/kafka-cryptocoin)
