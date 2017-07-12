@@ -1,0 +1,38 @@
+version: '3'
+services:
+  zookeeper:
+    image: "confluentinc/cp-zookeeper:3.2.1"
+    ports:
+      - '2181'
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  broker:
+    image: "confluentinc/cp-kafka:3.2.1"
+    ports:
+      - '9092'
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://broker:9092"
+
+  schema-registry:
+    image: "confluentinc/cp-schema-registry:3.2.1"
+    ports:
+      - '8081'
+    depends_on:
+      - broker
+    environment:
+      - SCHEMA_REGISTRY_HOST_NAME=schema-registry
+      - SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=zookeeper:2181
+      - SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8081
+
+  kafka-cryptocoin:
+    image: "coinsmith/kafka-cryptocoin:develop"
+    environment:
+      - KAFKA_CRYPTOCOIN_SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - KAFKA_CRYPTOCOIN_BOOTSTRAP_SERVERS=broker:9092
+    depends_on:
+      - schema-registry
