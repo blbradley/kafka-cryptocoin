@@ -9,13 +9,13 @@ Kafka producer for data collection from cryptocurrency exchanges
 Configuration
 -------------
 
-###Environment Variables
+### Environment Variables
 
 * `KAFKA_CRYPTOCOIN_BOOTSTRAP_SERVERS`: Comma separated list of Kafka brokers. Port is required.
 * `KAFKA_CRYPTOCOIN_SCHEMA_REGISTRY_URL`: URL for Kafka Schema Registry
 * `KAFKA_CRYPTOCOIN_PRODUCER_CONFIG`: Path to Kafka producer properties file (optional)
 
-###application.conf
+### application.conf
 
 Main config is at `kafka.cryptocoin`.
 
@@ -40,7 +40,7 @@ Start the the required services. Then, run:
     export KAFKA_CRYPTOCOIN_SCHEMA_REGISTRY_URL=http://localhost:8081
     sbt run
 
-###Running the tests
+### Running the tests
 
     sbt test
 
@@ -48,7 +48,7 @@ Start the the required services. Then, run:
 Docker
 ------
 
-###Run Docker image
+### Run Docker image
 
 Images for development and mainline versions are built and pushed to [Docker Hub](https://hub.docker.com/r/coinsmith/kafka-cryptocoin)
 when a pull request is merged. Merges into git branches `develop` or `master` are
@@ -65,7 +65,7 @@ are running locally.
     coinsmith/kafka-cryptocoin:develop
 
 
-###Build a Docker image
+### Build a Docker image
 
     sbt docker
 
